@@ -1,7 +1,8 @@
 # Mburucuyá App — Estado del Proyecto
 
-**Fecha:** 25 de mayo de 2026  
-**App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este
+**Fecha:** 26 de mayo de 2026  
+**App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este  
+**URL pública:** https://mburucuya-app-ab053.web.app
 
 ---
 
@@ -11,118 +12,98 @@
 
 ```
 mburucuya-app/
-├── index.html          ← toda la app (HTML + CSS + JS en un solo archivo, ~50 KB)
-├── supabase-auth-setup.sql  ← setup de BD y políticas de seguridad
-├── package.json
-└── .claude/
-    └── launch.json     ← config para correr con `npx serve -p 3000`
+├── index.html              ← toda la app (HTML + CSS + JS en un solo archivo)
+├── manifest.json           ← configuración PWA
+├── sw.js                   ← service worker (app instalable offline)
+├── icon-192.png            ← ícono de la app (192x192)
+├── icon-512.png            ← ícono de la app (512x512)
+├── supabase-auth-setup.sql ← setup de BD y políticas de seguridad
+├── firebase.json           ← configuración Firebase Hosting
+├── .firebaserc             ← proyecto Firebase: mburucuya-app-ab053
+└── .gitignore
 ```
 
 ### Tecnologías
 - **Frontend:** HTML / CSS / JavaScript puro (sin frameworks)
 - **Backend:** Supabase (base de datos PostgreSQL + autenticación)
-- **Servidor de desarrollo:** `npx serve -p 3000`
-- **Deploy:** Netlify (configurado pero con problema de clave)
+- **Hosting:** Firebase Hosting (gratuito, estable)
+- **Repositorio:** GitHub — github.com/gdalmas1973/mburucuya-app (público)
+- **PWA:** App instalable en iPhone (Safari) y Android (Chrome)
 
 ### Supabase
 - **URL del proyecto:** `https://vdsrhoomfmseduyszrts.supabase.co`
-- **Tablas creadas:** `apartamentos`, `perfiles`, `comunicados`, `reservas`, `gastos`, `publicaciones`
-- **Datos de prueba:** 4 apartamentos (4B, 7A, 3C, 2A)
+- **Site URL configurada:** `https://mburucuya-app-ab053.web.app`
+- **Tablas:** `apartamentos`, `perfiles`, `comunicados`, `reservas`, `gastos`, `publicaciones`
+- **Apartamentos cargados:** 28 reales (101–107, 201–207, 301–307, 401–407)
 
 ---
 
-## Funcionalidades implementadas
+## Estado de funcionalidades
 
 | Módulo | Estado | Notas |
 |--------|--------|-------|
-| Login / Registro | Funciona con Supabase Auth | Crea perfil automáticamente |
-| Información del edificio | Funciona | Carga comunicados desde BD |
-| Reserva de salón | Interfaz completa | Guarda en BD, pendiente aprobar por admin |
-| Gastos comunes | Funciona | Muestra gastos por apartamento |
-| Compra/Venta/Alquiler | Funciona | Carga publicaciones desde BD |
-| Mi perfil | Funciona | Muestra nombre, rol, apartamento |
-| Panel admin | Interfaz completa | Publicar novedades, aprobar reservas, cargar gastos |
-
-### Roles de usuario
-- **Administrador** — acceso total, panel de gestión
-- **Propietario** — ve gastos, puede publicar propiedades
-- **Inquilino** — ve comunicados, reserva salón
-- **Visitante** — solo información pública
-
----
-
-## Problema principal que bloquea Netlify
-
-La app **funciona localmente** pero **no funciona en Netlify** porque la clave de Supabase usada en el código es la `sb_publishable_...` (formato corto). Netlify necesita la clave **`anon`** en formato JWT largo (`eyJ...`).
-
-**Cómo resolverlo:**
-1. Ir a [supabase.com](https://supabase.com) → tu proyecto → Settings → API
-2. Copiar el valor de **"anon public"** (empieza con `eyJ...`)
-3. Reemplazarlo en `index.html` línea ~428:
-   ```javascript
-   const sb = createClient(
-     'https://vdsrhoomfmseduyszrts.supabase.co',
-     'eyJ...'  ← pegar aquí la clave anon
-   );
-   ```
-4. Hacer deploy nuevo en Netlify
+| Login / Registro | ✅ Funciona | Crea perfil automáticamente |
+| Cerrar sesión | ✅ Funciona | |
+| Información del edificio | ✅ Funciona | Carga comunicados desde BD |
+| Reserva de salón | ✅ Funciona | Guarda en BD, admin aprueba |
+| Gastos comunes | ✅ Funciona | Muestra gastos por apartamento |
+| Compra/Venta/Alquiler | ✅ Funciona | Carga publicaciones desde BD |
+| Mi perfil | ✅ Funciona | Nombre, rol, apartamento |
+| Panel admin — Novedades | ✅ Funciona | Publica comunicados |
+| Panel admin — Reservas | ✅ Funciona | Aprueba/rechaza reservas |
+| Panel admin — Gastos | ✅ Funciona | Carga gastos por apartamento |
+| Panel admin — Usuarios | ✅ Funciona | Asigna rol y apartamento |
+| PWA instalable | ✅ Funciona | iPhone y Android |
+| Cambio de contraseña | ⏸ Pendiente | Por ahora se hace por SQL en Supabase |
 
 ---
 
-## Próximos pasos (en orden de prioridad)
+## Usuarios actuales
 
-### 1. Arreglar deploy en Netlify (urgente)
-- Reemplazar clave Supabase por la clave `anon` correcta
-- Hacer deploy y confirmar que funciona desde celular
-
-### 2. Crear usuarios reales
-- Registrar a Gustavo como administrador
-- Ejecutar en Supabase el SQL de promoción a admin:
-  ```sql
-  UPDATE perfiles 
-  SET rol = 'administrador', apartamento_id = (SELECT id FROM apartamentos WHERE numero = '4B')
-  WHERE email = 'gdalmas@gmail.com';
-  ```
-- Registrar 2–3 vecinos de prueba (propietarios/inquilinos)
-
-### 3. Datos reales en la base de datos
-- Completar la lista de apartamentos del edificio (hoy solo hay 4 de prueba)
-- Cargar gastos comunes reales del mes actual
-- Publicar el primer comunicado real
-
-### 4. Pulir el panel de administrador
-- Probar flujo completo: publicar novedad → vecino la ve
-- Probar flujo de reserva: vecino pide → admin aprueba → aparece en calendario
-- Probar carga de gasto: admin carga → vecino ve deuda
-
-### 5. Información del edificio
-- Actualizar los teléfonos de contacto reales (plomero, electricista, admin)
-- Agregar el reglamento del edificio como comunicado fijo o sección propia
-
-### 6. Mejoras opcionales (después del MVP)
-- Subir fotos a publicaciones de venta/alquiler (Supabase Storage)
-- Notificaciones por email al aprobar/rechazar reservas (Supabase Edge Functions)
-- Resumen mensual de gastos en PDF
-- Filtro de reservas del salón por apartamento (vista admin)
+| Email | Rol | Apartamento |
+|-------|-----|-------------|
+| gdalmas@gmail.com | Administrador | 107 |
 
 ---
 
-## Cómo correr la app localmente
+## Cómo cambiar contraseña (por ahora)
 
-```powershell
-# Desde la carpeta del proyecto
-npx serve -p 3000
-# Abrir en el navegador: http://localhost:3000
+Desde Supabase → SQL Editor:
+
+```sql
+UPDATE auth.users 
+SET encrypted_password = crypt('nueva-contraseña', gen_salt('bf'))
+WHERE email = 'email-del-usuario@ejemplo.com';
 ```
 
-O usar la configuración de Claude Code (botón de run).
+---
+
+## Cómo publicar cambios
+
+Desde Claude Code, cualquier cambio en el código se publica con:
+
+```
+firebase deploy --only hosting
+```
+
+Se ejecuta desde acá automáticamente — Gustavo no necesita tocar la consola.
 
 ---
 
-## Notas técnicas para continuar
+## Cómo agregar vecinos
 
-- Toda la app está en **un solo archivo** `index.html`. Al editar, buscar por nombre de función o sección (las secciones empiezan con `sec-`).
-- Los datos se cargan **de forma lazy**: cada sección carga sus datos la primera vez que se abre.
-- El estado se guarda en variables globales: `usuario`, `perfil`, `aptId`, `calFecha`.
-- Las **políticas de seguridad (RLS)** están activas en Supabase: cada usuario solo ve sus propios datos; solo admins pueden modificar comunicados, gastos y reservas.
-- El archivo `supabase-auth-setup.sql` contiene el trigger que crea el perfil automáticamente al registrarse.
+1. El vecino entra a **https://mburucuya-app-ab053.web.app** y se registra
+2. Gustavo abre el panel admin → pestaña **Usuarios**
+3. Le asigna el rol (Propietario / Inquilino) y el apartamento
+4. Guardar
+
+---
+
+## Próximos pasos
+
+1. **Compartir con vecinos** — mandar el link por WhatsApp del edificio
+2. **Cargar datos reales** — primer comunicado, gastos del mes actual
+3. **Cambio de contraseña desde la app** — mejorar el flujo de recuperación
+4. **Dominio propio** — ej: `mburucuya.com` (~15 USD/año) cuando la app esté validada
+5. **Subir fotos** a publicaciones de venta/alquiler (Supabase Storage)
+6. **Notificaciones** al aprobar reservas (Supabase Edge Functions)
