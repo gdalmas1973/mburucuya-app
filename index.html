@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Mburucuyá App</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --verde:#1b5e20;--verde-med:#2e7d32;--verde-claro:#4caf50;
+      --verde-fondo:#e8f5e9;--gris:#f4f6f8;--gris-borde:#e0e0e0;
+      --texto:#1a1a2e;--texto-suave:#6b7280;--blanco:#ffffff;
+      --rojo:#c62828;--naranja:#e65100;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gris);color:var(--texto);min-height:100vh;max-width:480px;margin:0 auto}
+
+    /* ===== LOGIN ===== */
+    #loginScreen{min-height:100vh;background:linear-gradient(160deg,#1b4332 0%,#2d6a4f 60%,#1b5e20 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px}
+    .lg-logo{font-size:52px;margin-bottom:10px}
+    .lg-titulo{font-size:34px;font-weight:800;color:#fff;letter-spacing:-1px}
+    .lg-sub{font-size:14px;color:rgba(255,255,255,0.55);margin-bottom:36px}
+    .lg-box{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px}
+    .lg-box-titulo{font-size:20px;font-weight:700;margin-bottom:20px}
+    .lg-campo{margin-bottom:14px}
+    .lg-label{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;display:block}
+    .lg-input{width:100%;border:1.5px solid var(--gris-borde);border-radius:10px;padding:12px 14px;font-size:15px;outline:none;font-family:inherit;color:var(--texto);transition:border-color .2s}
+    .lg-input:focus{border-color:var(--verde-claro)}
+    .lg-btn{width:100%;background:var(--verde-med);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;font-family:inherit}
+    .lg-btn:active{opacity:.85}
+    .lg-toggle{text-align:center;margin-top:16px;font-size:13px;color:var(--texto-suave)}
+    .lg-toggle a{color:var(--verde-med);font-weight:600;cursor:pointer;text-decoration:underline}
+    .lg-error{background:#ffebee;color:var(--rojo);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+    .lg-error.on{display:block}
+    .lg-ok{background:#e8f5e9;color:var(--verde-med);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+    .lg-ok.on{display:block}
+
+    /* ===== NAV ===== */
+    .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--gris-borde);display:flex;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+    .nav-btn{flex:1;border:none;background:none;padding:8px 4px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--texto-suave);font-size:10px;transition:color .2s}
+    .nav-btn.active{color:var(--verde-med)}
+    .nav-btn svg{width:22px;height:22px}
+
+    /* ===== ADMIN FAB ===== */
+    .admin-fab{position:fixed;bottom:80px;right:max(16px,calc((100vw - 480px)/2 + 16px));width:52px;height:52px;background:var(--verde-med);color:#fff;border:none;border-radius:50%;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(46,125,50,.45);z-index:90;display:none;align-items:center;justify-content:center;transition:transform .2s}
+    .admin-fab:active{transform:scale(.9)}
+    .admin-fab.on{display:flex}
+
+    /* ===== CONTENT ===== */
+    .content{padding-bottom:72px}
+    .seccion{display:none}
+    .seccion.activa{display:block}
+
+    /* ===== HOME ===== */
+    .home-header{padding:52px 20px 16px;background:#fff}
+    .home-saludo{font-size:14px;color:var(--texto-suave);margin-bottom:2px}
+    .home-nombre{font-size:26px;font-weight:700;display:flex;align-items:center;gap:6px}
+    .home-diamond{color:var(--verde-med)}
+    .home-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--verde-med);background:var(--verde-fondo);border:1px solid #c8e6c9;padding:4px 12px;border-radius:20px;margin-top:8px}
+
+    .hero{margin:16px;background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 50%,#1b5e20 100%);border-radius:20px;padding:24px 22px;color:#fff;position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(255,255,255,.05);border-radius:50%}
+    .hero::after{content:'';position:absolute;bottom:-40px;right:20px;width:160px;height:160px;background:rgba(255,255,255,.04);border-radius:50%}
+    .hero-sub{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:6px}
+    .hero-titulo{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:6px}
+    .hero-desc{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px}
+    .hero-stats{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500}
+
+    .mod-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--texto-suave);padding:4px 20px 10px}
+    .mod-lista{background:#fff;margin:0 16px;border-radius:16px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+    .mod-item{display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer;border-bottom:1px solid var(--gris-borde)}
+    .mod-item:last-child{border-bottom:none}
+    .mod-item:active{background:var(--gris)}
+    .mod-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .mod-ico.v{background:#e8f5e9}.mod-ico.a{background:#e3f2fd}.mod-ico.n{background:#fff3e0}.mod-ico.p{background:#f3e5f5}.mod-ico.r{background:#fce4ec}
+    .mod-txt{flex:1}
+    .mod-nombre{font-size:15px;font-weight:600;color:var(--verde-med)}
+    .mod-desc{font-size:12px;color:var(--texto-suave);margin-top:2px}
+    .mod-arr{color:var(--gris-borde);font-size:18px}
+
+    /* ===== PAGE HEADER ===== */
+    .ph{background:#fff;padding:52px 20px 16px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+    .ph-back{width:36px;height:36px;border-radius:10px;border:1px solid var(--gris-borde);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .ph-titulo{font-size:18px;font-weight:700}
+    .ic{padding:16px 16px 80px}
+
+    /* ===== CARD ===== */
+    .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .card-t{font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+
+    /* ===== CHIPS ===== */
+    .chip{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+    .chip-aviso{background:#fff3e0;color:#e65100}.chip-asamblea{background:#e3f2fd;color:#1565c0}
+    .chip-mantenimiento{background:#fce4ec;color:#c62828}.chip-general{background:var(--verde-fondo);color:var(--verde-med)}
+    .chip-pagado{background:#e8f5e9;color:#2e7d32}.chip-pendiente{background:#fff3e0;color:#e65100}
+    .chip-vencido{background:#ffebee;color:#c62828}.chip-confirmada{background:#e8f5e9;color:#2e7d32}
+    .chip-rechazada{background:#ffebee;color:#c62828}.chip-cancelada{background:#f5f5f5;color:#757575}
+    .chip-venta{background:#e3f2fd;color:#1565c0}.chip-alquiler{background:#f3e5f5;color:#6a1b9a}
+
+    /* ===== COMUNICADOS ===== */
+    .com-item{border-bottom:1px solid var(--gris-borde);padding-bottom:14px;margin-bottom:14px}
+    .com-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+    .com-titulo{font-size:15px;font-weight:600;margin:6px 0 4px}
+    .com-texto{font-size:13px;color:var(--texto-suave);line-height:1.5}
+    .com-fecha{font-size:11px;color:#bdbdbd;margin-top:6px}
+
+    /* ===== GASTOS ===== */
+    .saldo-box{background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%);border-radius:14px;padding:22px;color:#fff;margin-bottom:12px}
+    .saldo-lbl{font-size:12px;opacity:.7;text-transform:uppercase;letter-spacing:.5px}
+    .saldo-monto{font-size:34px;font-weight:800;margin:4px 0}
+    .saldo-det{font-size:12px;opacity:.7}
+    .saldo-vence{margin-top:10px;font-size:12px;background:rgba(255,255,255,.15);display:inline-block;padding:4px 12px;border-radius:20px}
+    .gasto-fila{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--gris-borde)}
+    .gasto-fila:last-child{border-bottom:none}
+    .gasto-mes{font-size:14px;font-weight:500}
+    .gasto-r{display:flex;align-items:center;gap:10px}
+    .gasto-monto{font-size:14px;font-weight:600}
+
+    /* ===== CALENDARIO ===== */
+    .cal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .cal-mes{font-size:16px;font-weight:700}
+    .cal-nav{background:none;border:1px solid var(--gris-borde);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .cal-dn{text-align:center;font-size:11px;color:var(--texto-suave);font-weight:600;padding:4px 0}
+    .cal-d{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:pointer;border:none;background:none}
+    .cal-d.vacio{cursor:default}.cal-d.hoy{background:var(--verde-fondo);color:var(--verde-med);font-weight:700}
+    .cal-d.reservado{background:#ffebee;color:var(--rojo)}.cal-d.sel{background:var(--verde-med);color:#fff;font-weight:700}
+    .cal-d:not(.vacio):not(.reservado):hover{background:var(--gris)}
+    .cal-leyenda{display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--texto-suave)}
+    .cal-li{display:flex;align-items:center;gap:6px}
+    .cal-dot{width:12px;height:12px;border-radius:3px}
+
+    /* ===== FORMS ===== */
+    .res-form{display:none;margin-top:12px}
+    .res-form.on{display:block}
+    .fc{margin-bottom:14px}
+    .fl{font-size:13px;font-weight:500;margin-bottom:6px;display:block;color:var(--texto-suave)}
+    .fi,.fs,.ft{width:100%;border:1px solid var(--gris-borde);border-radius:10px;padding:11px 13px;font-size:14px;outline:none;font-family:inherit;color:var(--texto);background:#fff}
+    .fi:focus,.fs:focus,.ft:focus{border-color:var(--verde-claro)}
+    .ft{height:80px;resize:none}
+
+    /* ===== BOTONES ===== */
+    .btn{border:none;border-radius:12px;padding:13px 20px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s;font-family:inherit}
+    .btn:active{transform:scale(.97)}
+    .btn-v{background:var(--verde-med);color:#fff;width:100%}
+    .btn-o{background:none;border:1px solid var(--gris-borde);color:var(--texto)}
+    .btn-xs{padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;cursor:pointer;border:none}
+    .btn-ap{background:#e8f5e9;color:#2e7d32}.btn-re{background:#ffebee;color:var(--rojo)}
+    .btn-llamar{background:var(--verde-fondo);color:var(--verde-med);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer}
+
+    /* ===== PROPIEDADES ===== */
+    .prop-img{width:100%;height:150px;background:linear-gradient(135deg,#a5d6a7,#1b5e20);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:12px}
+    .prop-precio{font-size:22px;font-weight:800;color:var(--verde-med)}
+    .prop-mon{font-size:13px;color:var(--texto-suave)}
+    .prop-desc{font-size:13px;color:var(--texto-suave);margin:8px 0;line-height:1.4}
+    .prop-tags{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .prop-tag{font-size:12px;background:var(--gris);padding:4px 10px;border-radius:6px;color:var(--texto-suave)}
+    .prop-ct{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+    .prop-dueno{font-size:13px;font-weight:500}
+    .filtros{display:flex;gap:8px;margin-bottom:16px}
+    .fb{flex:1;padding:9px;border-radius:10px;border:1px solid var(--gris-borde);background:#fff;font-size:13px;font-weight:500;cursor:pointer;color:var(--texto-suave)}
+    .fb.active{background:var(--verde-med);color:#fff;border-color:var(--verde-med)}
+
+    /* ===== RESERVAS HISTORIAL ===== */
+    .res-item{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--gris-borde)}
+    .res-item:last-child{border-bottom:none}
+    .res-fecha{font-size:14px;font-weight:600}
+    .res-hora{font-size:12px;color:var(--texto-suave);margin-top:2px}
+
+    /* ===== INFO EDIFICIO ===== */
+    .ii{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--gris-borde)}
+    .ii:last-child{border-bottom:none}
+    .ii-ico{width:38px;height:38px;border-radius:10px;background:var(--verde-fondo);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .ii-nom{font-size:14px;font-weight:500}
+    .ii-det{font-size:12px;color:var(--texto-suave);margin-top:2px}
+
+    /* ===== PERFIL ===== */
+    .pf-av{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--verde-claro),var(--verde));display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;margin:0 auto 14px}
+    .pf-nom{text-align:center;font-size:20px;font-weight:700}
+    .pf-rol{text-align:center;margin-top:6px}
+    .roles{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+    .rol-i{display:flex;align-items:center;gap:12px;padding:13px;border-radius:12px;border:2px solid var(--gris-borde)}
+    .rol-i.on{border-color:var(--verde-med);background:var(--verde-fondo)}
+    .rol-ico{font-size:22px}
+    .rol-nom{font-size:14px;font-weight:600}
+    .rol-dsc{font-size:12px;color:var(--texto-suave);margin-top:2px}
+
+    /* ===== ADMIN PANEL ===== */
+    .adm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}
+    .adm-overlay.on{opacity:1;pointer-events:auto}
+    .adm-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;z-index:160;transition:transform .35s cubic-bezier(.34,1.56,.64,1);max-height:88vh;display:flex;flex-direction:column}
+    .adm-sheet.on{transform:translateX(-50%) translateY(0)}
+    .adm-handle{width:40px;height:4px;background:var(--gris-borde);border-radius:2px;margin:12px auto 0}
+    .adm-hdr{padding:12px 20px 0;display:flex;align-items:center;justify-content:space-between}
+    .adm-hdr-t{font-size:16px;font-weight:700}
+    .adm-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--texto-suave);line-height:1}
+    .adm-tabs{display:flex;padding:10px 16px 0;gap:4px;border-bottom:1px solid var(--gris-borde)}
+    .adm-tab{flex:1;padding:9px 4px;border:none;background:none;font-size:12px;font-weight:600;cursor:pointer;color:var(--texto-suave);border-bottom:2px solid transparent;transition:all .2s;font-family:inherit}
+    .adm-tab.active{color:var(--verde-med);border-bottom-color:var(--verde-med)}
+    .adm-body{overflow-y:auto;flex:1;padding:16px}
+    .adm-panel{display:none}
+    .adm-panel.active{display:block}
+    .adm-res-item{background:var(--gris);border-radius:10px;padding:12px;margin-bottom:10px}
+    .adm-usr-item{background:var(--gris);border-radius:10px;padding:12px;margin-bottom:10px}
+    .adm-usr-nom{font-weight:700;font-size:14px;margin-bottom:2px}
+    .adm-usr-email{font-size:12px;color:var(--texto-suave);margin-bottom:10px}
+    .adm-res-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+    .adm-res-nom{font-size:14px;font-weight:600}
+    .adm-res-det{font-size:12px;color:var(--texto-suave);margin-top:2px}
+    .adm-res-acc{display:flex;gap:8px}
+
+    /* ===== UTIL ===== */
+    .loading{text-align:center;padding:30px;color:var(--texto-suave);font-size:14px}
+    .loading::after{content:'';display:inline-block;width:18px;height:18px;border:2px solid var(--gris-borde);border-top-color:var(--verde-med);border-radius:50%;animation:spin .8s linear infinite;margin-left:8px;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{text-align:center;padding:32px 20px;color:var(--texto-suave)}
+    .empty-ico{font-size:40px;margin-bottom:10px}
+    .empty-txt{font-size:14px}
+    .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%) translateY(20px);background:#212121;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:all .3s;z-index:300;white-space:nowrap;max-width:90vw}
+    .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toast.ok{background:var(--verde-med)}.toast.err{background:var(--rojo)}
+  </style>
+</head>
+<body>
+
+<!-- ====== LOGIN ====== -->
+<div id="loginScreen" style="display:none">
+  <div class="lg-logo">🏢</div>
+  <div class="lg-titulo">Mburucuyá</div>
+  <div class="lg-sub">Gestión del edificio</div>
+
+  <!-- LOGIN FORM -->
+  <div class="lg-box" id="lgForm">
+    <div class="lg-box-titulo">Iniciar sesión</div>
+    <div class="lg-error" id="lgErr"></div>
+    <div class="lg-campo"><label class="lg-label">Email</label><input class="lg-input" type="email" id="lgEmail" placeholder="tu@email.com"/></div>
+    <div class="lg-campo"><label class="lg-label">Contraseña</label><input class="lg-input" type="password" id="lgPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')hacerLogin()"/></div>
+    <button class="lg-btn" onclick="hacerLogin()">Entrar</button>
+    <div class="lg-toggle">¿No tenés cuenta? <a onclick="toggleForm(true)">Registrarse</a></div>
+  </div>
+
+  <!-- REGISTER FORM -->
+  <div class="lg-box" id="rgForm" style="display:none">
+    <div class="lg-box-titulo">Crear cuenta</div>
+    <div class="lg-error" id="rgErr"></div>
+    <div class="lg-ok" id="rgOk"></div>
+    <div class="lg-campo"><label class="lg-label">Nombre completo</label><input class="lg-input" type="text" id="rgNom" placeholder="Tu nombre"/></div>
+    <div class="lg-campo"><label class="lg-label">Email</label><input class="lg-input" type="email" id="rgEmail" placeholder="tu@email.com"/></div>
+    <div class="lg-campo"><label class="lg-label">Contraseña</label><input class="lg-input" type="password" id="rgPass" placeholder="Mínimo 6 caracteres"/></div>
+    <div class="lg-campo"><label class="lg-label">Apartamento (opcional)</label><input class="lg-input" type="text" id="rgApto" placeholder="Ej: 4B"/></div>
+    <button class="lg-btn" onclick="hacerRegistro()">Crear cuenta</button>
+    <div class="lg-toggle">¿Ya tenés cuenta? <a onclick="toggleForm(false)">Iniciar sesión</a></div>
+  </div>
+</div>
+
+<!-- ====== MAIN APP ====== -->
+<div id="mainApp" style="display:none">
+<div class="content">
+
+  <!-- HOME -->
+  <div class="seccion activa" id="sec-home">
+    <div class="home-header">
+      <div class="home-saludo" id="homeSaludo">Buenos días,</div>
+      <div class="home-nombre" id="homeNombre">... <span class="home-diamond">◆</span></div>
+      <div class="home-badge"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span id="homeRol">...</span></div>
+    </div>
+    <div class="hero">
+      <div class="hero-sub">Torre A — Punta del Este</div>
+      <div class="hero-titulo">Mburucuyá</div>
+      <div class="hero-desc">Gestión inteligente del edificio</div>
+      <div class="hero-stats"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="heroStats">Cargando...</span></div>
+    </div>
+    <div class="mod-label">Módulos</div>
+    <div class="mod-lista">
+      <div class="mod-item" onclick="irPag('edificio')"><div class="mod-ico v">🏠</div><div class="mod-txt"><div class="mod-nombre">Información del edificio</div><div class="mod-desc">Reglamento, horarios, novedades</div></div><div class="mod-arr">›</div></div>
+      <div class="mod-item" onclick="irPag('salon')"><div class="mod-ico a">📅</div><div class="mod-txt"><div class="mod-nombre">Reserva de salón</div><div class="mod-desc">Calendario de reservas</div></div><div class="mod-arr">›</div></div>
+      <div class="mod-item" onclick="irPag('gastos')"><div class="mod-ico n">📄</div><div class="mod-txt"><div class="mod-nombre">Gastos comunes</div><div class="mod-desc" id="gastoDesc">Cargando...</div></div><div class="mod-arr">›</div></div>
+      <div class="mod-item" onclick="irPag('propiedades')"><div class="mod-ico p">🔍</div><div class="mod-txt"><div class="mod-nombre">Compra / Venta / Alquiler</div><div class="mod-desc" id="propDesc">Cargando...</div></div><div class="mod-arr">›</div></div>
+      <div class="mod-item" onclick="irPag('perfil')"><div class="mod-ico r">👤</div><div class="mod-txt"><div class="mod-nombre">Mi perfil y accesos</div><div class="mod-desc">Roles y configuración</div></div><div class="mod-arr">›</div></div>
+    </div>
+  </div>
+
+  <!-- EDIFICIO -->
+  <div class="seccion" id="sec-edificio">
+    <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Información del edificio</div></div>
+    <div class="ic">
+      <div class="card"><div class="card-t">Novedades</div><div id="listaComunicados"><div class="loading">Cargando</div></div></div>
+      <div class="card"><div class="card-t">Contactos útiles</div>
+        <div class="ii"><div class="ii-ico">🚒</div><div><div class="ii-nom">Bomberos</div><div class="ii-det">104</div></div></div>
+        <div class="ii"><div class="ii-ico">🚑</div><div><div class="ii-nom">Emergencias médicas</div><div class="ii-det">105 / 911</div></div></div>
+        <div class="ii"><div class="ii-ico">🔧</div><div><div class="ii-nom">Plomero</div><div class="ii-det">+598 99 111 222</div></div></div>
+        <div class="ii"><div class="ii-ico">⚡</div><div><div class="ii-nom">Electricista</div><div class="ii-det">+598 99 333 444</div></div></div>
+        <div class="ii"><div class="ii-ico">🏢</div><div><div class="ii-nom">Administración</div><div class="ii-det">+598 99 000 111 · admin@mburucuya.com</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SALON -->
+  <div class="seccion" id="sec-salon">
+    <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Salón Común</div></div>
+    <div class="ic">
+      <div class="card">
+        <div class="card-t">Reservar salón común</div>
+        <div class="cal-hdr"><button class="cal-nav" onclick="cambiarMes(-1)">‹</button><div class="cal-mes" id="calMes"></div><button class="cal-nav" onclick="cambiarMes(1)">›</button></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-leyenda">
+          <div class="cal-li"><div class="cal-dot" style="background:#e8f5e9;border:2px solid #4caf50"></div> Hoy</div>
+          <div class="cal-li"><div class="cal-dot" style="background:#ffebee"></div> Ocupado</div>
+          <div class="cal-li"><div class="cal-dot" style="background:#2e7d32"></div> Elegido</div>
+        </div>
+      </div>
+      <div class="card res-form" id="resForm">
+        <div class="card-t">Nueva reserva</div>
+        <div id="resFechaLbl" style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--verde-med)"></div>
+        <div class="fc"><label class="fl">Inicio</label>
+          <select class="fs" id="horaI"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option></select>
+        </div>
+        <div class="fc"><label class="fl">Fin</label>
+          <select class="fs" id="horaF"><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option><option>22:00</option></select>
+        </div>
+        <div class="fc"><label class="fl">Observaciones (opcional)</label><textarea class="ft" id="resObs" placeholder="Cumpleaños, reunión..."></textarea></div>
+        <button class="btn btn-v" onclick="guardarReserva()">Confirmar reserva</button>
+      </div>
+      <div class="card"><div class="card-t">Mis reservas</div><div id="listaReservas"><div class="loading">Cargando</div></div></div>
+    </div>
+  </div>
+
+  <!-- GASTOS -->
+  <div class="seccion" id="sec-gastos">
+    <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Gastos Comunes</div></div>
+    <div class="ic">
+      <div id="saldoBox"><div class="loading">Cargando</div></div>
+      <div class="card"><div class="card-t">Historial</div><div id="listaGastos"><div class="loading">Cargando</div></div></div>
+    </div>
+  </div>
+
+  <!-- PROPIEDADES -->
+  <div class="seccion" id="sec-propiedades">
+    <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Propiedades</div></div>
+    <div class="ic">
+      <div class="filtros">
+        <button class="fb active" id="fTodos" onclick="filtrarProp('todos')">Todos</button>
+        <button class="fb" id="fVenta" onclick="filtrarProp('venta')">Venta</button>
+        <button class="fb" id="fAlquiler" onclick="filtrarProp('alquiler')">Alquiler</button>
+      </div>
+      <div id="listaPropiedades"><div class="loading">Cargando</div></div>
+    </div>
+  </div>
+
+  <!-- PERFIL -->
+  <div class="seccion" id="sec-perfil">
+    <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Mi Perfil</div></div>
+    <div class="ic">
+      <div class="card"><div class="pf-av">👤</div><div class="pf-nom" id="pfNom">...</div><div class="pf-rol"><span class="chip chip-general" id="pfRol">...</span></div></div>
+      <div class="card"><div class="card-t">Apartamento</div><div id="pfApto"><div class="loading">Cargando</div></div></div>
+      <div class="card">
+        <div class="card-t">Roles del edificio</div>
+        <div class="roles">
+          <div class="rol-i" id="rAdmin"><div class="rol-ico">🔑</div><div><div class="rol-nom">Administrador</div><div class="rol-dsc">Gestión completa del edificio</div></div></div>
+          <div class="rol-i" id="rProp"><div class="rol-ico">🏘️</div><div><div class="rol-nom">Propietario</div><div class="rol-dsc">Ve gastos, reserva salón, publica</div></div></div>
+          <div class="rol-i" id="rInq"><div class="rol-ico">🏠</div><div><div class="rol-nom">Inquilino</div><div class="rol-dsc">Ve avisos y reserva salón</div></div></div>
+          <div class="rol-i" id="rVis"><div class="rol-ico">👁️</div><div><div class="rol-nom">Visitante</div><div class="rol-dsc">Solo información pública</div></div></div>
+        </div>
+      </div>
+      <button class="btn btn-o" style="width:100%;margin-top:4px" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </div>
+
+</div><!-- fin content -->
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" id="nHome" onclick="irNav('home',this)"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Inicio</button>
+  <button class="nav-btn" id="nEdif" onclick="irNav('edificio',this)"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>Edificio</button>
+  <button class="nav-btn" id="nSal" onclick="irNav('salon',this)"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Salón</button>
+  <button class="nav-btn" id="nGast" onclick="irNav('gastos',this)"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Gastos</button>
+  <button class="nav-btn" id="nPerf" onclick="irNav('perfil',this)"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</button>
+</nav>
+
+<!-- ADMIN FAB -->
+<button class="admin-fab" id="adminFab" onclick="abrirAdmin()">⚙️</button>
+
+</div><!-- fin mainApp -->
+
+<!-- ====== ADMIN PANEL ====== -->
+<div class="adm-overlay" id="admOverlay" onclick="cerrarAdmin()"></div>
+<div class="adm-sheet" id="admSheet">
+  <div class="adm-handle"></div>
+  <div class="adm-hdr"><div class="adm-hdr-t">⚙️ Panel de Administrador</div><button class="adm-close" onclick="cerrarAdmin()">×</button></div>
+  <div class="adm-tabs">
+    <button class="adm-tab active" onclick="tabAdmin(0,this)">📢 Novedad</button>
+    <button class="adm-tab" onclick="tabAdmin(1,this)">📅 Reservas</button>
+    <button class="adm-tab" onclick="tabAdmin(2,this)">💰 Gasto</button>
+    <button class="adm-tab" onclick="tabAdmin(3,this)">👥 Usuarios</button>
+  </div>
+  <div class="adm-body">
+    <!-- TAB 0: NUEVA NOVEDAD -->
+    <div class="adm-panel active" id="aTab0">
+      <div class="fc"><label class="fl">Tipo</label>
+        <select class="fs" id="novTipo"><option value="aviso">📣 Aviso</option><option value="asamblea">🏛️ Asamblea</option><option value="mantenimiento">🔧 Mantenimiento</option><option value="general">📌 General</option></select>
+      </div>
+      <div class="fc"><label class="fl">Título</label><input class="fi" type="text" id="novTitulo" placeholder="Ej: Corte de agua el lunes"/></div>
+      <div class="fc"><label class="fl">Contenido</label><textarea class="ft" id="novCont" placeholder="Detallá el comunicado..."></textarea></div>
+      <button class="btn btn-v" onclick="publicarNovedad()">Publicar novedad</button>
+    </div>
+    <!-- TAB 1: RESERVAS PENDIENTES -->
+    <div class="adm-panel" id="aTab1">
+      <div id="listaResPend"><div class="loading">Cargando</div></div>
+    </div>
+    <!-- TAB 3: USUARIOS -->
+    <div class="adm-panel" id="aTab3">
+      <div id="listaUsuarios"><div class="loading">Cargando</div></div>
+    </div>
+    <!-- TAB 2: CARGAR GASTO -->
+    <div class="adm-panel" id="aTab2">
+      <div class="fc"><label class="fl">Apartamento</label><select class="fs" id="gApto"></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fc"><label class="fl">Mes</label>
+          <select class="fs" id="gMes"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Setiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+        </div>
+        <div class="fc"><label class="fl">Año</label><input class="fi" type="number" id="gAnio" value="2026"/></div>
+      </div>
+      <div class="fc"><label class="fl">Monto ($)</label><input class="fi" type="number" id="gMonto" placeholder="Ej: 12400"/></div>
+      <div class="fc"><label class="fl">Fecha de vencimiento</label><input class="fi" type="date" id="gVence"/></div>
+      <button class="btn btn-v" onclick="guardarGasto()">Guardar gasto</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const {createClient} = supabase;
+const sb = createClient(
+  'https://vdsrhoomfmseduyszrts.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkc3Job29tZm1zZWR1eXN6cnRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDc4NjksImV4cCI6MjA5NTA4Mzg2OX0.jNRF58COs5Qsg638P8ADgreTVTE-Ve6H-ZImqzkdzK4'
+);
+
+// Estado
+let usuario=null, perfil=null, aptId=null;
+let calFecha=new Date(), diaSelec=null, reservasFecha=[], publis=[], cargado={};
+
+// Formateo
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MESES_C=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const DIAS_S=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+function fFecha(s){if(!s)return'';const d=new Date(s+'T12:00:00');return`${d.getDate()} ${MESES_C[d.getMonth()]} ${d.getFullYear()}`}
+function fMonto(n){return new Intl.NumberFormat('es-UY').format(n)}
+function saludo(){const h=new Date().getHours();return h<12?'Buenos días,':h<20?'Buenas tardes,':'Buenas noches,'}
+
+// Toast
+function toast(msg,tipo=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast on '+tipo;
+  setTimeout(()=>t.className='toast',3000);
+}
+
+// ===== AUTH =====
+function toggleForm(reg){
+  document.getElementById('lgForm').style.display=reg?'none':'block';
+  document.getElementById('rgForm').style.display=reg?'block':'none';
+}
+
+async function hacerLogin(){
+  const email=document.getElementById('lgEmail').value.trim();
+  const pass=document.getElementById('lgPass').value;
+  const err=document.getElementById('lgErr');
+  err.className='lg-error';
+  if(!email||!pass){err.textContent='Completá email y contraseña';err.className='lg-error on';return}
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){err.textContent='Email o contraseña incorrectos';err.className='lg-error on'}
+}
+
+async function hacerRegistro(){
+  const nom=document.getElementById('rgNom').value.trim();
+  const email=document.getElementById('rgEmail').value.trim();
+  const pass=document.getElementById('rgPass').value;
+  const apto=document.getElementById('rgApto').value.trim().toUpperCase();
+  const err=document.getElementById('rgErr');
+  const ok=document.getElementById('rgOk');
+  err.className='lg-error'; ok.className='lg-ok';
+  if(!nom||!email||!pass){err.textContent='Completá nombre, email y contraseña';err.className='lg-error on';return}
+  if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.className='lg-error on';return}
+  const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{nombre:nom,apartamento:apto}}});
+  if(error){err.textContent=error.message;err.className='lg-error on';return}
+  if(data.user){
+    let aptIdReg=null;
+    if(apto){const{data:a}=await sb.from('apartamentos').select('id').eq('numero',apto).single();if(a)aptIdReg=a.id}
+    await sb.from('perfiles').upsert({id:data.user.id,email,nombre:nom,apartamento_id:aptIdReg,rol:'visitante'});
+  }
+  ok.textContent='¡Cuenta creada! Revisá tu email para confirmar (o iniciá sesión directo si está desactivada la confirmación).';
+  ok.className='lg-ok on';
+}
+
+async function cerrarSesion(){
+  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
+  Object.keys(localStorage).forEach(k=>{ if(k.includes('supabase')||k.includes('sb-')) localStorage.removeItem(k); });
+  sessionStorage.clear();
+  window.location.replace(window.location.href.split('?')[0]);
+}
+
+// ===== PERFIL =====
+async function cargarPerfil(user){
+  usuario=user;
+  let{data:p}=await sb.from('perfiles').select('*,apartamentos(numero,piso)').eq('id',user.id).single();
+  if(!p){
+    const nom=user.user_metadata?.nombre||user.email.split('@')[0];
+    await sb.from('perfiles').upsert({id:user.id,email:user.email,nombre:nom,rol:'visitante'});
+    const{data:p2}=await sb.from('perfiles').select('*,apartamentos(numero,piso)').eq('id',user.id).single();
+    p=p2;
+  }
+  perfil=p; aptId=p?.apartamento_id||null;
+  const nom=p?.nombre||user.email.split('@')[0];
+  const rol=p?.rol||'visitante';
+  document.getElementById('homeSaludo').textContent=saludo();
+  document.getElementById('homeNombre').innerHTML=`${nom} <span class="home-diamond">◆</span>`;
+  document.getElementById('homeRol').textContent=rol.charAt(0).toUpperCase()+rol.slice(1);
+  document.getElementById('pfNom').textContent=nom;
+  document.getElementById('pfRol').textContent=rol;
+  const aptoEl=document.getElementById('pfApto');
+  if(p?.apartamentos){
+    aptoEl.innerHTML=`<div class="ii"><div class="ii-ico">🏠</div><div><div class="ii-nom">Apto ${p.apartamentos.numero} — Piso ${p.apartamentos.piso||'-'}</div><div class="ii-det">${rol}</div></div></div>`;
+  } else {
+    aptoEl.innerHTML='<div style="font-size:13px;color:var(--texto-suave);padding:8px 0">Sin apartamento asignado aún</div>';
+  }
+  const rm={administrador:'rAdmin',propietario:'rProp',inquilino:'rInq',visitante:'rVis'};
+  Object.values(rm).forEach(id=>document.getElementById(id)?.classList.remove('on'));
+  if(rm[rol])document.getElementById(rm[rol])?.classList.add('on');
+  if(rol==='administrador'){document.getElementById('adminFab').classList.add('on');cargarAptosAdmin()}
+}
+
+// ===== STATS HOME =====
+async function cargarStats(){
+  const[{count:nc},{count:pc}]=await Promise.all([
+    sb.from('comunicados').select('*',{count:'exact',head:true}).eq('publicado',true),
+    sb.from('publicaciones').select('*',{count:'exact',head:true}).eq('activa',true)
+  ]);
+  document.getElementById('heroStats').textContent=`${nc||0} novedades · ${pc||0} publicaciones`;
+  document.getElementById('propDesc').textContent=`${pc||0} publicaciones activas`;
+  if(aptId){
+    const{data:g}=await sb.from('gastos').select('estado').eq('apartamento_id',aptId);
+    const pend=(g||[]).filter(x=>x.estado!=='pagado').length;
+    document.getElementById('gastoDesc').textContent=pend>0?`${pend} pago${pend>1?'s':''} pendiente${pend>1?'s':''}`:'Al día ✓';
+  } else {
+    document.getElementById('gastoDesc').textContent='Ver estado de cuenta';
+  }
+}
+
+// ===== COMUNICADOS =====
+async function cargarComunicados(){
+  const{data}=await sb.from('comunicados').select('*').eq('publicado',true).order('created_at',{ascending:false});
+  const el=document.getElementById('listaComunicados');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-ico">📢</div><div class="empty-txt">Sin novedades por ahora</div></div>';return}
+  el.innerHTML=data.map(c=>`<div class="com-item"><span class="chip chip-${c.tipo}">${c.tipo}</span><div class="com-titulo">${c.titulo}</div><div class="com-texto">${c.contenido||''}</div><div class="com-fecha">${fFecha(c.created_at?.slice(0,10))}</div></div>`).join('');
+}
+
+// ===== GASTOS =====
+async function cargarGastos(){
+  const sEl=document.getElementById('saldoBox'), lEl=document.getElementById('listaGastos');
+  if(!aptId){sEl.innerHTML='<div class="empty"><div class="empty-ico">🏠</div><div class="empty-txt">Sin apartamento asignado</div></div>';lEl.innerHTML='';return}
+  const{data}=await sb.from('gastos').select('*').eq('apartamento_id',aptId).order('anio',{ascending:false}).order('mes',{ascending:false});
+  if(!data?.length){sEl.innerHTML='<div class="empty"><div class="empty-ico">💰</div><div class="empty-txt">Sin gastos registrados</div></div>';lEl.innerHTML='';return}
+  const pend=data.find(g=>g.estado!=='pagado');
+  const numApto=perfil?.apartamentos?.numero||'';
+  sEl.innerHTML=pend
+    ?`<div class="saldo-box"><div class="saldo-lbl">Saldo pendiente · Apto ${numApto}</div><div class="saldo-monto">$ ${fMonto(pend.monto)}</div><div class="saldo-det">${MESES[pend.mes-1]} ${pend.anio}</div>${pend.fecha_vencimiento?`<div class="saldo-vence">Vence: ${fFecha(pend.fecha_vencimiento)}</div>`:''}</div>`
+    :`<div class="card" style="text-align:center;padding:22px"><div style="font-size:36px">✅</div><div style="margin-top:8px;font-weight:700;color:var(--verde-med)">Todo al día</div></div>`;
+  lEl.innerHTML=data.map(g=>`<div class="gasto-fila"><div><div class="gasto-mes">${MESES[g.mes-1]} ${g.anio}</div></div><div class="gasto-r"><div class="gasto-monto">$ ${fMonto(g.monto)}</div><span class="chip chip-${g.estado}">${g.estado}</span></div></div>`).join('');
+}
+
+// ===== CALENDARIO =====
+async function cargarReservasMes(){
+  const y=calFecha.getFullYear(),m=String(calFecha.getMonth()+1).padStart(2,'0');
+  const{data}=await sb.from('reservas').select('fecha').gte('fecha',`${y}-${m}-01`).lte('fecha',`${y}-${m}-31`).in('estado',['confirmada','pendiente']);
+  reservasFecha=(data||[]).map(r=>r.fecha);
+  renderCal();
+}
+function renderCal(){
+  const y=calFecha.getFullYear(),m=calFecha.getMonth();
+  document.getElementById('calMes').textContent=`${MESES[m]} ${y}`;
+  const g=document.getElementById('calGrid');
+  let h=DIAS_S.map(d=>`<div class="cal-dn">${d}</div>`).join('');
+  const hoy=new Date(), pd=new Date(y,m,1).getDay(), dm=new Date(y,m+1,0).getDate();
+  for(let i=0;i<pd;i++)h+=`<div class="cal-d vacio"></div>`;
+  for(let d=1;d<=dm;d++){
+    const f=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const esHoy=hoy.getDate()===d&&hoy.getMonth()===m&&hoy.getFullYear()===y;
+    const res=reservasFecha.includes(f), sel=diaSelec===f;
+    const pas=new Date(y,m,d)<new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+    let cls='cal-d'+(esHoy?' hoy':'')+(res?' reservado':'')+(sel?' sel':'');
+    h+=`<button class="${cls}" ${(!res&&!pas)?`onclick="selDia('${f}')"`:'disabled'} ${pas?'style="opacity:.3"':''}>${d}</button>`;
+  }
+  g.innerHTML=h;
+}
+function cambiarMes(d){calFecha.setMonth(calFecha.getMonth()+d);diaSelec=null;document.getElementById('resForm').classList.remove('on');cargarReservasMes()}
+function selDia(f){
+  diaSelec=f;
+  const d=new Date(f+'T12:00:00');
+  document.getElementById('resFechaLbl').textContent=`📅 ${DIAS_S[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+  document.getElementById('resForm').classList.add('on');
+  document.getElementById('resForm').scrollIntoView({behavior:'smooth'});
+  renderCal();
+}
+async function guardarReserva(){
+  if(!diaSelec)return toast('Seleccioná una fecha','err');
+  const hi=document.getElementById('horaI').value, hf=document.getElementById('horaF').value;
+  if(hi>=hf)return toast('El fin debe ser después del inicio','err');
+  const{error}=await sb.from('reservas').insert({fecha:diaSelec,hora_inicio:hi,hora_fin:hf,observaciones:document.getElementById('resObs').value||null,estado:'pendiente',apartamento_id:aptId,solicitante_id:usuario?.id});
+  if(error)return toast('Error: '+error.message,'err');
+  toast('¡Reserva solicitada!','ok');
+  document.getElementById('resObs').value='';
+  document.getElementById('resForm').classList.remove('on');
+  reservasFecha.push(diaSelec); diaSelec=null; renderCal(); cargarHistReservas();
+}
+async function cargarHistReservas(){
+  const{data}=await sb.from('reservas').select('*').order('fecha',{ascending:false}).limit(10);
+  const el=document.getElementById('listaReservas');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">Sin reservas aún</div></div>';return}
+  el.innerHTML=data.map(r=>`<div class="res-item"><div><div class="res-fecha">${fFecha(r.fecha)}</div><div class="res-hora">${r.hora_inicio?.slice(0,5)} — ${r.hora_fin?.slice(0,5)}</div>${r.observaciones?`<div style="font-size:12px;color:var(--texto-suave)">${r.observaciones}</div>`:''}</div><span class="chip chip-${r.estado}">${r.estado}</span></div>`).join('');
+}
+
+// ===== PROPIEDADES =====
+async function cargarPublicaciones(){
+  const{data}=await sb.from('publicaciones').select('*,apartamentos(numero,piso)').eq('activa',true).order('created_at',{ascending:false});
+  publis=data||[]; renderPublis(publis);
+}
+function renderPublis(lista){
+  const el=document.getElementById('listaPropiedades');
+  if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏘️</div><div class="empty-txt">Sin publicaciones activas</div></div>';return}
+  el.innerHTML=lista.map(p=>`<div class="card"><div class="prop-img">${p.tipo==='venta'?'🏢':'🏠'}</div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="prop-precio">${p.moneda} ${fMonto(p.precio)}</div><div class="prop-mon">${p.tipo==='alquiler'?'por mes':'precio de venta'}</div></div><span class="chip chip-${p.tipo}">${p.tipo}</span></div><div class="prop-desc">${p.descripcion||''}</div><div class="prop-tags">${p.ambientes?`<span class="prop-tag">🛏 ${p.ambientes} amb.</span>`:''}${p.superficie_m2?`<span class="prop-tag">📐 ${p.superficie_m2} m²</span>`:''}${p.amoblado?`<span class="prop-tag">🪑 Amoblado</span>`:''}${p.apartamentos?`<span class="prop-tag">Apto ${p.apartamentos.numero}</span>`:''}</div><div class="prop-ct"><div class="prop-dueno">👤 ${p.contacto_nombre||''}</div>${p.contacto_telefono?`<button class="btn-llamar" onclick="window.location='tel:${p.contacto_telefono}'">📞 Llamar</button>`:''}</div></div>`).join('');
+}
+function filtrarProp(t){
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(t==='todos'?'fTodos':t==='venta'?'fVenta':'fAlquiler').classList.add('active');
+  renderPublis(t==='todos'?publis:publis.filter(p=>p.tipo===t));
+}
+
+// ===== NAVEGACIÓN =====
+function irNav(s,btn){
+  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+s).classList.add('activa');
+  btn.classList.add('active');
+  cargarSec(s); window.scrollTo(0,0);
+}
+function irPag(s){
+  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+s).classList.add('activa');
+  const nm={edificio:'nEdif',salon:'nSal',gastos:'nGast',perfil:'nPerf'};
+  if(nm[s])document.getElementById(nm[s]).classList.add('active');
+  cargarSec(s); window.scrollTo(0,0);
+}
+function volverHome(){
+  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-home').classList.add('activa');
+  document.getElementById('nHome').classList.add('active');
+  window.scrollTo(0,0);
+}
+function cargarSec(s){
+  if(cargado[s])return; cargado[s]=true;
+  if(s==='edificio')cargarComunicados();
+  if(s==='salon'){cargarReservasMes();cargarHistReservas()}
+  if(s==='gastos')cargarGastos();
+  if(s==='propiedades')cargarPublicaciones();
+}
+
+// ===== ADMIN PANEL =====
+function abrirAdmin(){
+  document.getElementById('admOverlay').classList.add('on');
+  document.getElementById('admSheet').classList.add('on');
+  cargarResPend();
+}
+function cerrarAdmin(){
+  document.getElementById('admOverlay').classList.remove('on');
+  document.getElementById('admSheet').classList.remove('on');
+}
+function tabAdmin(i,btn){
+  document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.adm-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('aTab'+i).classList.add('active');
+  if(i===1)cargarResPend();
+  if(i===3)cargarUsuarios();
+}
+async function publicarNovedad(){
+  const tipo=document.getElementById('novTipo').value;
+  const titulo=document.getElementById('novTitulo').value.trim();
+  const cont=document.getElementById('novCont').value.trim();
+  if(!titulo)return toast('Ingresá un título','err');
+  const{error}=await sb.from('comunicados').insert({tipo,titulo,contenido:cont,publicado:true,autor_id:usuario?.id});
+  if(error)return toast('Error: '+error.message,'err');
+  toast('¡Novedad publicada!','ok');
+  document.getElementById('novTitulo').value='';
+  document.getElementById('novCont').value='';
+  cargado['edificio']=false;
+}
+async function cargarResPend(){
+  const{data}=await sb.from('reservas').select('*,apartamentos(numero)').eq('estado','pendiente').order('fecha');
+  const el=document.getElementById('listaResPend');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">Sin reservas pendientes</div></div>';return}
+  el.innerHTML=data.map(r=>`<div class="adm-res-item"><div class="adm-res-top"><div><div class="adm-res-nom">📅 ${fFecha(r.fecha)}</div><div class="adm-res-det">${r.hora_inicio?.slice(0,5)} — ${r.hora_fin?.slice(0,5)} · Apto ${r.apartamentos?.numero||'-'}</div>${r.observaciones?`<div class="adm-res-det">${r.observaciones}</div>`:''}</div><span class="chip chip-pendiente">pendiente</span></div><div class="adm-res-acc"><button class="btn-xs btn-ap" onclick="cambiarRes('${r.id}','confirmada')">✓ Aprobar</button><button class="btn-xs btn-re" onclick="cambiarRes('${r.id}','rechazada')">✕ Rechazar</button></div></div>`).join('');
+}
+async function cambiarRes(id,estado){
+  const{error}=await sb.from('reservas').update({estado}).eq('id',id);
+  if(error)return toast('Error al actualizar','err');
+  toast(estado==='confirmada'?'✓ Reserva aprobada':'✕ Reserva rechazada','ok');
+  cargarResPend(); cargado['salon']=false;
+}
+async function cargarAptosAdmin(){
+  const{data}=await sb.from('apartamentos').select('id,numero,piso').order('numero');
+  const sel=document.getElementById('gApto');
+  sel.innerHTML=(data||[]).map(a=>`<option value="${a.id}">Apto ${a.numero} — Piso ${a.piso||'-'}</option>`).join('');
+  const hoy=new Date();
+  document.getElementById('gMes').value=hoy.getMonth()+1;
+  document.getElementById('gAnio').value=hoy.getFullYear();
+  const ult=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+  document.getElementById('gVence').value=ult.toISOString().slice(0,10);
+}
+async function guardarGasto(){
+  const aId=document.getElementById('gApto').value;
+  const mes=parseInt(document.getElementById('gMes').value);
+  const anio=parseInt(document.getElementById('gAnio').value);
+  const monto=parseFloat(document.getElementById('gMonto').value);
+  const vence=document.getElementById('gVence').value;
+  if(!aId||!monto||monto<=0)return toast('Completá apartamento y monto','err');
+  const{error}=await sb.from('gastos').insert({apartamento_id:aId,mes,anio,monto,estado:'pendiente',fecha_vencimiento:vence||null});
+  if(error)return toast('Error: '+error.message,'err');
+  toast('¡Gasto cargado!','ok');
+  document.getElementById('gMonto').value='';
+  cargado['gastos']=false;
+}
+
+// ===== USUARIOS ADMIN =====
+let aptosCache=[];
+async function cargarUsuarios(){
+  const el=document.getElementById('listaUsuarios');
+  el.innerHTML='<div class="loading">Cargando</div>';
+  const [{data:users},{data:aptos}]=await Promise.all([
+    sb.from('perfiles').select('id,nombre,email,rol,apartamento_id').order('nombre'),
+    sb.from('apartamentos').select('id,numero,piso').order('numero')
+  ]);
+  aptosCache=aptos||[];
+  const optsApto='<option value="">Sin apartamento</option>'+(aptos||[]).map(a=>`<option value="${a.id}">Apto ${a.numero}</option>`).join('');
+  if(!users?.length){el.innerHTML='<div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">Sin usuarios registrados</div></div>';return}
+  el.innerHTML=(users).map(u=>`
+    <div class="adm-usr-item">
+      <div class="adm-usr-nom">${u.nombre||'Sin nombre'}</div>
+      <div class="adm-usr-email">${u.email}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><label class="fl">Rol</label>
+          <select class="fs" id="uRol_${u.id}">
+            <option value="administrador"${u.rol==='administrador'?' selected':''}>Administrador</option>
+            <option value="propietario"${u.rol==='propietario'?' selected':''}>Propietario</option>
+            <option value="inquilino"${u.rol==='inquilino'?' selected':''}>Inquilino</option>
+            <option value="visitante"${u.rol==='visitante'?' selected':''}>Visitante</option>
+          </select>
+        </div>
+        <div><label class="fl">Apartamento</label>
+          <select class="fs" id="uApto_${u.id}">${optsApto.replace(`value="${u.apartamento_id}"`,`value="${u.apartamento_id}" selected`)}</select>
+        </div>
+      </div>
+      <button class="btn btn-v" onclick="guardarUsuario('${u.id}')">Guardar</button>
+    </div>`).join('');
+}
+async function guardarUsuario(id){
+  const rol=document.getElementById('uRol_'+id).value;
+  const aptoId=document.getElementById('uApto_'+id).value||null;
+  const{error}=await sb.from('perfiles').update({rol,apartamento_id:aptoId}).eq('id',id);
+  if(error)return toast('Error: '+error.message,'err');
+  toast('Usuario actualizado','ok');
+}
+
+// ===== INIT =====
+sb.auth.onAuthStateChange(async(event,session)=>{
+  if(session?.user){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    await cargarPerfil(session.user);
+    cargarStats();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('mainApp').style.display='none';
+  }
+});
+sb.auth.getSession().then(({data:{session}})=>{
+  if(!session){
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('mainApp').style.display='none';
+  }
+});
+</script>
+</body>
+</html>
