@@ -4,6 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>Mburucuyá App</title>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#2e7d32"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -790,6 +793,7 @@ sb.auth.getSession().then(({data:{session}})=>{
     document.getElementById('mainApp').style.display='none';
   }
 });
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 </script>
 </body>
 </html>
