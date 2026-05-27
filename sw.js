@@ -1,7 +1,8 @@
-const CACHE = 'mburucuya-v1';
+const CACHE = 'mburucuya-v3';
+const LOCAL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(LOCAL)));
   self.skipWaiting();
 });
 
@@ -13,6 +14,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if(e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  // Solo cachear archivos locales, no tocar peticiones a Supabase u otros dominios
+  if(!LOCAL.includes(new URL(e.request.url).pathname)) return;
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });

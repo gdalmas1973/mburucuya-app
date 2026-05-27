@@ -106,6 +106,13 @@
     .com-titulo{font-size:15px;font-weight:600;margin:6px 0 4px}
     .com-texto{font-size:13px;color:var(--texto-suave);line-height:1.5}
     .com-fecha{font-size:11px;color:#bdbdbd;margin-top:6px}
+    .com-acciones{display:flex;gap:8px;margin-top:8px}
+    .com-btn{border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .com-btn-edit{background:#e8f5e9;color:var(--verde-med)}
+    .com-btn-del{background:#ffebee;color:var(--rojo)}
+    .com-edit-form{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    .com-edit-form .fi{width:100%}
+    .com-edit-form .ft{width:100%;min-height:80px}
 
     /* ===== GASTOS ===== */
     .saldo-box{background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%);border-radius:14px;padding:22px;color:#fff;margin-bottom:12px}
@@ -231,6 +238,15 @@
   <div class="lg-logo">🏢</div>
   <div class="lg-titulo">Mburucuyá</div>
   <div class="lg-sub">Gestión del edificio</div>
+
+  <!-- RESET PASSWORD FORM -->
+  <div class="lg-box" id="resetForm" style="display:none">
+    <div class="lg-box-titulo">Nueva contraseña</div>
+    <div class="lg-error" id="resetErr"></div>
+    <div class="lg-campo"><label class="lg-label">Nueva contraseña</label><input class="lg-input" type="password" id="resetPass" placeholder="Mínimo 6 caracteres"/></div>
+    <div class="lg-campo"><label class="lg-label">Repetir contraseña</label><input class="lg-input" type="password" id="resetPass2" placeholder="Repetí la contraseña"/></div>
+    <button class="lg-btn" onclick="guardarNuevaContrasena()">Guardar contraseña</button>
+  </div>
 
   <!-- LOGIN FORM -->
   <div class="lg-box" id="lgForm">
@@ -395,6 +411,7 @@
     <button class="adm-tab" onclick="tabAdmin(1,this)">📅 Reservas</button>
     <button class="adm-tab" onclick="tabAdmin(2,this)">💰 Gasto</button>
     <button class="adm-tab" onclick="tabAdmin(3,this)">👥 Usuarios</button>
+    <button class="adm-tab" onclick="tabAdmin(4,this)">🏘️ Publicar</button>
   </div>
   <div class="adm-body">
     <!-- TAB 0: NUEVA NOVEDAD -->
@@ -410,6 +427,25 @@
     <div class="adm-panel" id="aTab1">
       <div id="listaResPend"><div class="loading">Cargando</div></div>
     </div>
+    <!-- TAB 4: NUEVA PUBLICACIÓN -->
+    <div class="adm-panel" id="aTab4">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="fc"><label class="fl">Tipo</label><select class="fs" id="pubTipo"><option value="venta">Venta</option><option value="alquiler">Alquiler</option></select></div>
+        <div class="fc"><label class="fl">Moneda</label><select class="fs" id="pubMon"><option value="USD">USD</option><option value="UYU">UYU</option><option value="ARS">ARS</option></select></div>
+      </div>
+      <div class="fc"><label class="fl">Precio</label><input class="fi" type="number" id="pubPrecio" placeholder="Ej: 150000"/></div>
+      <div class="fc"><label class="fl">Descripción</label><textarea class="ft" id="pubDesc" placeholder="Detallá la propiedad..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="fc"><label class="fl">Ambientes</label><input class="fi" type="number" id="pubAmb" placeholder="Ej: 3"/></div>
+        <div class="fc"><label class="fl">Superficie m²</label><input class="fi" type="number" id="pubSup" placeholder="Ej: 80"/></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="pubAmob"/><label for="pubAmob" style="font-size:13px">Amoblado</label></div>
+      <div class="fc"><label class="fl">Apartamento</label><select class="fs" id="pubApto"></select></div>
+      <div class="fc"><label class="fl">Nombre de contacto</label><input class="fi" type="text" id="pubCtNom" placeholder="Ej: Juan García"/></div>
+      <div class="fc"><label class="fl">Teléfono de contacto</label><input class="fi" type="tel" id="pubCtTel" placeholder="Ej: +598 99 123 456"/></div>
+      <button class="btn btn-v" onclick="guardarPublicacion()">Publicar</button>
+    </div>
+
     <!-- TAB 3: USUARIOS -->
     <div class="adm-panel" id="aTab3">
       <div id="listaUsuarios"><div class="loading">Cargando</div></div>
@@ -495,11 +531,13 @@ async function hacerRegistro(){
   ok.className='lg-ok on';
 }
 
+async function cambiarContrasena(){
+  const{error}=await sb.auth.resetPasswordForEmail(usuario.email,{redirectTo:'https://mburucuya-app-ab053.web.app'});
+  if(error)return toast('Error al enviar el email','err');
+  toast('Te enviamos un link a '+usuario.email,'ok');
+}
 async function cerrarSesion(){
-  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
-  Object.keys(localStorage).forEach(k=>{ if(k.includes('supabase')||k.includes('sb-')) localStorage.removeItem(k); });
-  sessionStorage.clear();
-  window.location.replace(window.location.href.split('?')[0]);
+  await sb.auth.signOut();
 }
 
 // ===== PERFIL =====
@@ -554,7 +592,60 @@ async function cargarComunicados(){
   const{data}=await sb.from('comunicados').select('*').eq('publicado',true).order('created_at',{ascending:false});
   const el=document.getElementById('listaComunicados');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-ico">📢</div><div class="empty-txt">Sin novedades por ahora</div></div>';return}
-  el.innerHTML=data.map(c=>`<div class="com-item"><span class="chip chip-${c.tipo}">${c.tipo}</span><div class="com-titulo">${c.titulo}</div><div class="com-texto">${c.contenido||''}</div><div class="com-fecha">${fFecha(c.created_at?.slice(0,10))}</div></div>`).join('');
+  const esAdmin=perfil?.rol==='administrador';
+  el.innerHTML=data.map(c=>`
+    <div class="com-item" id="com-${c.id}">
+      <span class="chip chip-${c.tipo}">${c.tipo}</span>
+      <div class="com-titulo">${c.titulo}</div>
+      <div class="com-texto">${c.contenido||''}</div>
+      <div class="com-fecha">${fFecha(c.created_at?.slice(0,10))}</div>
+      ${esAdmin?`<div class="com-acciones">
+        <button class="com-btn com-btn-edit" data-id="${c.id}" data-tipo="${c.tipo}" data-titulo="${(c.titulo||'').replace(/"/g,'&quot;')}" data-contenido="${(c.contenido||'').replace(/"/g,'&quot;')}" onclick="mostrarEditCom(this)">✏️ Editar</button>
+        <button class="com-btn com-btn-del" onclick="eliminarComunicado('${c.id}')">🗑️ Eliminar</button>
+      </div>`:''}
+    </div>`).join('');
+}
+function mostrarEditCom(btn){
+  const id=btn.dataset.id, tipo=btn.dataset.tipo, titulo=btn.dataset.titulo, contenido=btn.dataset.contenido;
+  const el=document.getElementById('com-'+id);
+  el.innerHTML=`
+    <div class="com-edit-form">
+      <select class="fs" id="eTipo-${id}">
+        <option value="aviso"${tipo==='aviso'?' selected':''}>📣 Aviso</option>
+        <option value="asamblea"${tipo==='asamblea'?' selected':''}>🏛️ Asamblea</option>
+        <option value="mantenimiento"${tipo==='mantenimiento'?' selected':''}>🔧 Mantenimiento</option>
+        <option value="general"${tipo==='general'?' selected':''}>📌 General</option>
+      </select>
+      <input class="fi" id="eTitulo-${id}" value="${titulo.replace(/"/g,'&quot;')}" placeholder="Título"/>
+      <textarea class="ft" id="eCont-${id}" placeholder="Contenido">${contenido}</textarea>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-v" style="flex:1" onclick="guardarEditCom('${id}')">Guardar</button>
+        <button class="btn btn-o" style="flex:1" onclick="cancelarEditCom()">Cancelar</button>
+      </div>
+    </div>`;
+}
+async function guardarEditCom(id){
+  const tipo=document.getElementById('eTipo-'+id).value;
+  const titulo=document.getElementById('eTitulo-'+id).value.trim();
+  const contenido=document.getElementById('eCont-'+id).value.trim();
+  if(!titulo)return toast('El título no puede estar vacío','err');
+  const{error}=await sb.from('comunicados').update({tipo,titulo,contenido}).eq('id',id);
+  if(error)return toast('Error al guardar','err');
+  toast('Comunicado actualizado','ok');
+  cargado['edificio']=false;
+  cargarComunicados();
+}
+function cancelarEditCom(){
+  cargado['edificio']=false;
+  cargarComunicados();
+}
+async function eliminarComunicado(id){
+  if(!confirm('¿Eliminar este comunicado?'))return;
+  const{error}=await sb.from('comunicados').delete().eq('id',id);
+  if(error)return toast('Error al eliminar','err');
+  toast('Comunicado eliminado','ok');
+  cargado['edificio']=false;
+  cargarComunicados();
 }
 
 // ===== GASTOS =====
@@ -630,7 +721,60 @@ async function cargarPublicaciones(){
 function renderPublis(lista){
   const el=document.getElementById('listaPropiedades');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏘️</div><div class="empty-txt">Sin publicaciones activas</div></div>';return}
-  el.innerHTML=lista.map(p=>`<div class="card"><div class="prop-img">${p.tipo==='venta'?'🏢':'🏠'}</div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="prop-precio">${p.moneda} ${fMonto(p.precio)}</div><div class="prop-mon">${p.tipo==='alquiler'?'por mes':'precio de venta'}</div></div><span class="chip chip-${p.tipo}">${p.tipo}</span></div><div class="prop-desc">${p.descripcion||''}</div><div class="prop-tags">${p.ambientes?`<span class="prop-tag">🛏 ${p.ambientes} amb.</span>`:''}${p.superficie_m2?`<span class="prop-tag">📐 ${p.superficie_m2} m²</span>`:''}${p.amoblado?`<span class="prop-tag">🪑 Amoblado</span>`:''}${p.apartamentos?`<span class="prop-tag">Apto ${p.apartamentos.numero}</span>`:''}</div><div class="prop-ct"><div class="prop-dueno">👤 ${p.contacto_nombre||''}</div>${p.contacto_telefono?`<button class="btn-llamar" onclick="window.location='tel:${p.contacto_telefono}'">📞 Llamar</button>`:''}</div></div>`).join('');
+  const esAdmin=perfil?.rol==='administrador';
+  el.innerHTML=lista.map(p=>`<div class="card" id="pub-${p.id}"><div class="prop-img">${p.tipo==='venta'?'🏢':'🏠'}</div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="prop-precio">${p.moneda} ${fMonto(p.precio)}</div><div class="prop-mon">${p.tipo==='alquiler'?'por mes':'precio de venta'}</div></div><span class="chip chip-${p.tipo}">${p.tipo}</span></div><div class="prop-desc">${p.descripcion||''}</div><div class="prop-tags">${p.ambientes?`<span class="prop-tag">🛏 ${p.ambientes} amb.</span>`:''}${p.superficie_m2?`<span class="prop-tag">📐 ${p.superficie_m2} m²</span>`:''}${p.amoblado?`<span class="prop-tag">🪑 Amoblado</span>`:''}${p.apartamentos?`<span class="prop-tag">Apto ${p.apartamentos.numero}</span>`:''}</div><div class="prop-ct"><div class="prop-dueno">👤 ${p.contacto_nombre||''}</div>${p.contacto_telefono?`<button class="btn-llamar" onclick="window.location='tel:${p.contacto_telefono}'">📞 Llamar</button>`:''}</div>${esAdmin?`<div class="com-acciones"><button class="com-btn com-btn-edit" data-id="${p.id}" onclick="mostrarEditPub(this)">✏️ Editar</button><button class="com-btn com-btn-del" onclick="eliminarPublicacion('${p.id}')">🗑️ Eliminar</button></div>`:''}</div>`).join('');
+}
+function mostrarEditPub(btn){
+  const id=btn.dataset.id;
+  const p=publis.find(x=>x.id===id);
+  if(!p)return;
+  const el=document.getElementById('pub-'+id);
+  el.innerHTML=`<div class="com-edit-form">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><label class="fl">Tipo</label><select class="fs" id="pTipo-${id}"><option value="venta"${p.tipo==='venta'?' selected':''}>Venta</option><option value="alquiler"${p.tipo==='alquiler'?' selected':''}>Alquiler</option></select></div>
+      <div><label class="fl">Moneda</label><select class="fs" id="pMon-${id}"><option value="USD"${p.moneda==='USD'?' selected':''}>USD</option><option value="UYU"${p.moneda==='UYU'?' selected':''}>UYU</option><option value="ARS"${p.moneda==='ARS'?' selected':''}>ARS</option></select></div>
+    </div>
+    <div><label class="fl">Precio</label><input class="fi" id="pPrecio-${id}" type="number" value="${p.precio||''}"/></div>
+    <div><label class="fl">Descripción</label><textarea class="ft" id="pDesc-${id}">${p.descripcion||''}</textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><label class="fl">Ambientes</label><input class="fi" id="pAmb-${id}" type="number" value="${p.ambientes||''}"/></div>
+      <div><label class="fl">Superficie m²</label><input class="fi" id="pSup-${id}" type="number" value="${p.superficie_m2||''}"/></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="pAmob-${id}"${p.amoblado?' checked':''}/><label for="pAmob-${id}" style="font-size:13px">Amoblado</label></div>
+    <div><label class="fl">Contacto nombre</label><input class="fi" id="pCtNom-${id}" value="${(p.contacto_nombre||'').replace(/"/g,'&quot;')}"/></div>
+    <div><label class="fl">Contacto teléfono</label><input class="fi" id="pCtTel-${id}" value="${p.contacto_telefono||''}"/></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-v" style="flex:1" onclick="guardarEditPub('${id}')">Guardar</button>
+      <button class="btn btn-o" style="flex:1" onclick="recargarPublis()">Cancelar</button>
+    </div>
+  </div>`;
+}
+async function guardarEditPub(id){
+  const tipo=document.getElementById('pTipo-'+id).value;
+  const moneda=document.getElementById('pMon-'+id).value;
+  const precio=parseFloat(document.getElementById('pPrecio-'+id).value)||0;
+  const descripcion=document.getElementById('pDesc-'+id).value.trim();
+  const ambientes=parseInt(document.getElementById('pAmb-'+id).value)||null;
+  const superficie_m2=parseFloat(document.getElementById('pSup-'+id).value)||null;
+  const amoblado=document.getElementById('pAmob-'+id).checked;
+  const contacto_nombre=document.getElementById('pCtNom-'+id).value.trim();
+  const contacto_telefono=document.getElementById('pCtTel-'+id).value.trim();
+  if(!precio)return toast('Ingresá un precio válido','err');
+  const{error}=await sb.from('publicaciones').update({tipo,moneda,precio,descripcion,ambientes,superficie_m2,amoblado,contacto_nombre,contacto_telefono}).eq('id',id);
+  if(error)return toast('Error al guardar','err');
+  toast('Publicación actualizada','ok');
+  recargarPublis();
+}
+async function eliminarPublicacion(id){
+  if(!confirm('¿Eliminar esta publicación?'))return;
+  const{error}=await sb.from('publicaciones').delete().eq('id',id);
+  if(error)return toast('Error al eliminar','err');
+  toast('Publicación eliminada','ok');
+  recargarPublis();
+}
+function recargarPublis(){
+  cargado['propiedades']=false;
+  cargarPublicaciones();
 }
 function filtrarProp(t){
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
@@ -686,6 +830,7 @@ function tabAdmin(i,btn){
   document.getElementById('aTab'+i).classList.add('active');
   if(i===1)cargarResPend();
   if(i===3)cargarUsuarios();
+  if(i===4)cargarAptosPublicacion();
 }
 async function publicarNovedad(){
   const tipo=document.getElementById('novTipo').value;
@@ -735,6 +880,38 @@ async function guardarGasto(){
   cargado['gastos']=false;
 }
 
+// ===== PUBLICACIONES ADMIN =====
+async function cargarAptosPublicacion(){
+  const{data}=await sb.from('apartamentos').select('id,numero,piso').order('numero');
+  const sel=document.getElementById('pubApto');
+  sel.innerHTML='<option value="">Sin apartamento</option>'+(data||[]).map(a=>`<option value="${a.id}">Apto ${a.numero}</option>`).join('');
+}
+async function guardarPublicacion(){
+  const tipo=document.getElementById('pubTipo').value;
+  const moneda=document.getElementById('pubMon').value;
+  const precio=parseFloat(document.getElementById('pubPrecio').value);
+  const descripcion=document.getElementById('pubDesc').value.trim();
+  const ambientes=parseInt(document.getElementById('pubAmb').value)||null;
+  const superficie_m2=parseFloat(document.getElementById('pubSup').value)||null;
+  const amoblado=document.getElementById('pubAmob').checked;
+  const apartamento_id=document.getElementById('pubApto').value||null;
+  const contacto_nombre=document.getElementById('pubCtNom').value.trim();
+  const contacto_telefono=document.getElementById('pubCtTel').value.trim();
+  if(!precio||precio<=0)return toast('Ingresá un precio válido','err');
+  if(!descripcion)return toast('Agregá una descripción','err');
+  const{error}=await sb.from('publicaciones').insert({tipo,moneda,precio,descripcion,ambientes,superficie_m2,amoblado,apartamento_id,contacto_nombre,contacto_telefono,activa:true});
+  if(error)return toast('Error: '+error.message,'err');
+  toast('¡Publicación creada!','ok');
+  document.getElementById('pubPrecio').value='';
+  document.getElementById('pubDesc').value='';
+  document.getElementById('pubAmb').value='';
+  document.getElementById('pubSup').value='';
+  document.getElementById('pubAmob').checked=false;
+  document.getElementById('pubCtNom').value='';
+  document.getElementById('pubCtTel').value='';
+  cargado['propiedades']=false;
+}
+
 // ===== USUARIOS ADMIN =====
 let aptosCache=[];
 async function cargarUsuarios(){
@@ -777,6 +954,14 @@ async function guardarUsuario(id){
 
 // ===== INIT =====
 sb.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('mainApp').style.display='none';
+    document.getElementById('lgForm').style.display='none';
+    document.getElementById('rgForm').style.display='none';
+    document.getElementById('resetForm').style.display='block';
+    return;
+  }
   if(session?.user){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('mainApp').style.display='block';
@@ -794,6 +979,19 @@ sb.auth.getSession().then(({data:{session}})=>{
   }
 });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+
+async function guardarNuevaContrasena(){
+  const pass=document.getElementById('resetPass').value;
+  const pass2=document.getElementById('resetPass2').value;
+  const err=document.getElementById('resetErr');
+  if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.className='lg-error on';return}
+  if(pass!==pass2){err.textContent='Las contraseñas no coinciden';err.className='lg-error on';return}
+  const{error}=await sb.auth.updateUser({password:pass});
+  if(error){err.textContent='Error: '+error.message;err.className='lg-error on';return}
+  toast('¡Contraseña actualizada!','ok');
+  document.getElementById('resetForm').style.display='none';
+  document.getElementById('lgForm').style.display='block';
+}
 </script>
 </body>
 </html>
