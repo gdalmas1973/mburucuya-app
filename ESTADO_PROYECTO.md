@@ -1,6 +1,6 @@
 # Mburucuyá App — Estado del Proyecto
 
-**Fecha:** 26 de mayo de 2026  
+**Fecha:** 27 de mayo de 2026  
 **App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este  
 **URL pública:** https://mburucuya-app-ab053.web.app
 
@@ -12,29 +12,31 @@
 
 ```
 mburucuya-app/
-├── index.html              ← toda la app (HTML + CSS + JS en un solo archivo)
-├── manifest.json           ← configuración PWA
-├── sw.js                   ← service worker (app instalable offline)
-├── icon-192.png            ← ícono de la app (192x192)
-├── icon-512.png            ← ícono de la app (512x512)
-├── supabase-auth-setup.sql ← setup de BD y políticas de seguridad
-├── firebase.json           ← configuración Firebase Hosting
-├── .firebaserc             ← proyecto Firebase: mburucuya-app-ab053
+├── index.html                          ← toda la app (HTML + CSS + JS)
+├── manifest.json                       ← configuración PWA
+├── sw.js                               ← service worker (push notifications)
+├── icon-192.png / icon-512.png         ← íconos de la app
+├── supabase-auth-setup.sql             ← setup de BD y políticas
+├── firebase.json                       ← configuración Firebase Hosting
+├── .firebaserc                         ← proyecto: mburucuya-app-ab053
+├── supabase/functions/
+│   └── notify-comunicado/index.ts      ← Edge Function para push notifications
 └── .gitignore
 ```
 
 ### Tecnologías
 - **Frontend:** HTML / CSS / JavaScript puro (sin frameworks)
-- **Backend:** Supabase (base de datos PostgreSQL + autenticación)
-- **Hosting:** Firebase Hosting (gratuito, estable)
+- **Backend:** Supabase (PostgreSQL + Auth + Storage + Edge Functions)
+- **Hosting:** Firebase Hosting (gratuito)
 - **Repositorio:** GitHub — github.com/gdalmas1973/mburucuya-app (público)
 - **PWA:** App instalable en iPhone (Safari) y Android (Chrome)
 
 ### Supabase
-- **URL del proyecto:** `https://vdsrhoomfmseduyszrts.supabase.co`
-- **Site URL configurada:** `https://mburucuya-app-ab053.web.app`
-- **Tablas:** `apartamentos`, `perfiles`, `comunicados`, `reservas`, `gastos`, `publicaciones`
-- **Apartamentos cargados:** 28 reales (101–107, 201–207, 301–307, 401–407)
+- **URL:** `https://vdsrhoomfmseduyszrts.supabase.co`
+- **Tablas:** `apartamentos`, `perfiles`, `comunicados`, `reservas`, `gastos`, `publicaciones`, `push_subscriptions`
+- **Apartamentos:** 28 reales (101–107, 201–207, 301–307, 401–407)
+- **Edge Functions:** `notify-comunicado` (envía push al publicar comunicado)
+- **Webhook:** INSERT en `comunicados` → dispara Edge Function
 
 ---
 
@@ -47,14 +49,32 @@ mburucuya-app/
 | Información del edificio | ✅ Funciona | Carga comunicados desde BD |
 | Reserva de salón | ✅ Funciona | Guarda en BD, admin aprueba |
 | Gastos comunes | ✅ Funciona | Muestra gastos por apartamento |
-| Compra/Venta/Alquiler | ✅ Funciona | Carga publicaciones desde BD |
+| Compra/Venta/Alquiler | ✅ Funciona | Con fotos (Supabase Storage) |
 | Mi perfil | ✅ Funciona | Nombre, rol, apartamento |
 | Panel admin — Novedades | ✅ Funciona | Publica comunicados |
 | Panel admin — Reservas | ✅ Funciona | Aprueba/rechaza reservas |
 | Panel admin — Gastos | ✅ Funciona | Carga gastos por apartamento |
 | Panel admin — Usuarios | ✅ Funciona | Asigna rol y apartamento |
+| Panel admin — Publicar | ✅ Funciona | Con fotos |
 | PWA instalable | ✅ Funciona | iPhone y Android |
+| Permisos por rol | ✅ Funciona | Navegación bloqueada por código |
+| Notificaciones in-app | ✅ Funciona | Polling 20s + visibilitychange |
+| Push notifications web | ✅ Funciona | Vía Edge Function + webhook |
+| Push notifications iOS | ✅ Funciona | Celular bloqueado, app cerrada — llega igual |
 | Cambio de contraseña | ⏸ Pendiente | Por ahora se hace por SQL en Supabase |
+
+---
+
+## Permisos por rol
+
+| Sección | Admin | Propietario | Inquilino | Visitante |
+|---------|-------|-------------|-----------|-----------|
+| Edificio (avisos) | ✅ | ✅ | ✅ | ✅ |
+| Salón (reservas) | ✅ | ✅ | ✅ | ❌ |
+| Gastos | ✅ | ✅ | ❌ | ❌ |
+| Propiedades | ✅ | ✅ | ❌ | ✅ |
+| Perfil | ✅ | ✅ | ✅ | ✅ |
+| Panel admin ⚙️ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -80,13 +100,18 @@ WHERE email = 'email-del-usuario@ejemplo.com';
 
 ## Cómo publicar cambios
 
-Desde Claude Code, cualquier cambio en el código se publica con:
-
 ```
 firebase deploy --only hosting
 ```
 
-Se ejecuta desde acá automáticamente — Gustavo no necesita tocar la consola.
+---
+
+## Cómo desplegar Edge Function
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = "tu-token"
+npx supabase functions deploy notify-comunicado --no-verify-jwt
+```
 
 ---
 
@@ -103,7 +128,5 @@ Se ejecuta desde acá automáticamente — Gustavo no necesita tocar la consola.
 
 1. **Compartir con vecinos** — mandar el link por WhatsApp del edificio
 2. **Cargar datos reales** — primer comunicado, gastos del mes actual
-3. **Cambio de contraseña desde la app** — mejorar el flujo de recuperación
-4. **Dominio propio** — ej: `mburucuya.com` (~15 USD/año) cuando la app esté validada
-5. **Subir fotos** a publicaciones de venta/alquiler (Supabase Storage)
-6. **Notificaciones** al aprobar reservas (Supabase Edge Functions)
+3. **Cambio de contraseña desde la app** — mejorar el flujo
+4. **Dominio propio** — ej: `mburucuya.com` (~15 USD/año)
