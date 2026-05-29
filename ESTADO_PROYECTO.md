@@ -1,6 +1,6 @@
 # Mburucuyá App — Estado del Proyecto
 
-**Fecha:** 27 de mayo de 2026  
+**Fecha:** 28 de mayo de 2026  
 **App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este  
 **URL pública:** https://mburucuya-app-ab053.web.app
 
@@ -14,7 +14,10 @@
 mburucuya-app/
 ├── index.html                          ← toda la app (HTML + CSS + JS)
 ├── manifest.json                       ← configuración PWA
-├── sw.js                               ← service worker (push notifications)
+├── sw.js                               ← service worker (push + auto-update)
+├── sw-ver.js                           ← versión del SW (actualizado en cada deploy)
+├── version.json                        ← versión de la app (para auto-reload)
+├── deploy.ps1                          ← script de deploy (actualiza versiones + publica)
 ├── icon-192.png / icon-512.png         ← íconos de la app
 ├── supabase-auth-setup.sql             ← setup de BD y políticas
 ├── firebase.json                       ← configuración Firebase Hosting
@@ -47,20 +50,22 @@ mburucuya-app/
 | Login / Registro | ✅ Funciona | Crea perfil automáticamente |
 | Cerrar sesión | ✅ Funciona | |
 | Información del edificio | ✅ Funciona | Carga comunicados desde BD |
-| Reserva de salón | ✅ Funciona | Guarda en BD, admin aprueba |
+| Reserva de salón | ✅ Funciona | Horario 08:00–00:00, admin aprueba |
 | Gastos comunes | ✅ Funciona | Muestra gastos por apartamento |
 | Compra/Venta/Alquiler | ✅ Funciona | Con fotos (Supabase Storage) |
 | Mi perfil | ✅ Funciona | Nombre, rol, apartamento |
 | Panel admin — Novedades | ✅ Funciona | Publica comunicados |
 | Panel admin — Reservas | ✅ Funciona | Aprueba/rechaza reservas |
-| Panel admin — Gastos | ✅ Funciona | Carga gastos por apartamento |
+| Panel admin — Gastos | ✅ Funciona | Carga gastos + toggle pagado/pendiente por vecino |
 | Panel admin — Usuarios | ✅ Funciona | Asigna rol y apartamento |
 | Panel admin — Publicar | ✅ Funciona | Con fotos |
 | PWA instalable | ✅ Funciona | iPhone y Android |
 | Permisos por rol | ✅ Funciona | Navegación bloqueada por código |
 | Notificaciones in-app | ✅ Funciona | Polling 20s + visibilitychange |
+| Badge en nav Edificio | ✅ Funciona | Punto verde animado (pulso) cuando hay novedades sin leer |
 | Push notifications web | ✅ Funciona | Vía Edge Function + webhook |
 | Push notifications iOS | ✅ Funciona | Celular bloqueado, app cerrada — llega igual |
+| Auto-actualización PWA | ✅ Funciona | SW versionado + version.json + postMessage |
 | Cambio de contraseña | ⏸ Pendiente | Por ahora se hace por SQL en Supabase |
 
 ---
@@ -83,6 +88,7 @@ mburucuya-app/
 | Email | Rol | Apartamento |
 |-------|-----|-------------|
 | gdalmas@gmail.com | Administrador | 107 |
+| vecinos varios | Propietario / Inquilino | según apartamento |
 
 ---
 
@@ -100,9 +106,11 @@ WHERE email = 'email-del-usuario@ejemplo.com';
 
 ## Cómo publicar cambios
 
+```powershell
+.\deploy.ps1
 ```
-firebase deploy --only hosting
-```
+
+Actualiza `version.json` y `sw-ver.js` con timestamp, y despliega a Firebase. Los vecinos reciben la actualización automáticamente la próxima vez que abran la app.
 
 ---
 
@@ -126,7 +134,5 @@ npx supabase functions deploy notify-comunicado --no-verify-jwt
 
 ## Próximos pasos
 
-1. **Compartir con vecinos** — mandar el link por WhatsApp del edificio
-2. **Cargar datos reales** — primer comunicado, gastos del mes actual
-3. **Cambio de contraseña desde la app** — mejorar el flujo
-4. **Dominio propio** — ej: `mburucuya.com` (~15 USD/año)
+1. **Cambio de contraseña desde la app** — mejorar el flujo
+2. **Dominio propio** — ej: `mburucuya.com` (~15 USD/año)
