@@ -25,6 +25,10 @@
         "headers": [{"key": "Cache-Control", "value": "no-cache, no-store, must-revalidate"}]
       },
       {
+        "source": "/sw-ver.js",
+        "headers": [{"key": "Cache-Control", "value": "no-cache, no-store, must-revalidate"}]
+      },
+      {
         "source": "**/*.@(js|css)",
         "headers": [{"key": "Cache-Control", "value": "no-cache"}]
       },

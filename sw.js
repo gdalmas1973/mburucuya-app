@@ -1,3 +1,4 @@
+importScripts('/sw-ver.js');
 const CACHE = 'mbu-202605281716';
 
 self.addEventListener('install', (e) => {
