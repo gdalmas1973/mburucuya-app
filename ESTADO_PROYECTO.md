@@ -1,6 +1,6 @@
 # Mburucuyá App — Estado del Proyecto
 
-**Fecha:** 28 de mayo de 2026  
+**Fecha:** 30 de mayo de 2026  
 **App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este  
 **URL pública:** https://mburucuya-app-ab053.web.app
 
@@ -53,6 +53,7 @@ mburucuya-app/
 | Reserva de salón | ✅ Funciona | Horario 08:00–00:00, admin aprueba |
 | Gastos comunes | ✅ Funciona | Muestra gastos por apartamento |
 | Compra/Venta/Alquiler | ✅ Funciona | Con fotos (Supabase Storage) |
+| Publicar (propietario) | ✅ Funciona | Propietario crea/edita/elimina sus propias publicaciones con foto |
 | Mi perfil | ✅ Funciona | Nombre, rol, apartamento |
 | Panel admin — Novedades | ✅ Funciona | Publica comunicados |
 | Panel admin — Reservas | ✅ Funciona | Aprueba/rechaza reservas |
@@ -77,7 +78,8 @@ mburucuya-app/
 | Edificio (avisos) | ✅ | ✅ | ✅ | ✅ |
 | Salón (reservas) | ✅ | ✅ | ✅ | ❌ |
 | Gastos | ✅ | ✅ | ❌ | ❌ |
-| Propiedades | ✅ | ✅ | ❌ | ✅ |
+| Propiedades (ver) | ✅ | ✅ | ❌ | ✅ |
+| Propiedades (publicar) | ✅ | ✅ | ❌ | ❌ |
 | Perfil | ✅ | ✅ | ✅ | ✅ |
 | Panel admin ⚙️ | ✅ | ❌ | ❌ | ❌ |
 
