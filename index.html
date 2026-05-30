@@ -404,6 +404,34 @@
   <div class="seccion" id="sec-propiedades">
     <div class="ph"><button class="ph-back" onclick="volverHome()">‹</button><div class="ph-titulo">Propiedades</div></div>
     <div class="ic">
+      <div id="wrapNuevaPub" style="display:none;margin-bottom:8px">
+        <button class="btn btn-v" style="width:100%" onclick="toggleFormNuevaPub()">➕ Nueva publicación</button>
+        <div id="formNuevaPub" class="card" style="display:none;margin-top:12px">
+          <div class="card-t" style="margin-bottom:12px">Nueva publicación</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="fc"><label class="fl">Tipo</label><select class="fs" id="p2Tipo"><option value="venta">Venta</option><option value="alquiler">Alquiler</option></select></div>
+            <div class="fc"><label class="fl">Moneda</label><select class="fs" id="p2Mon"><option value="USD">USD</option><option value="UYU">UYU</option><option value="ARS">ARS</option></select></div>
+          </div>
+          <div class="fc"><label class="fl">Precio</label><input class="fi" type="number" id="p2Precio" placeholder="Ej: 150000"/></div>
+          <div class="fc"><label class="fl">Descripción</label><textarea class="ft" id="p2Desc" placeholder="Detallá la propiedad..."></textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="fc"><label class="fl">Ambientes</label><input class="fi" type="number" id="p2Amb" placeholder="Ej: 3"/></div>
+            <div class="fc"><label class="fl">Superficie m²</label><input class="fi" type="number" id="p2Sup" placeholder="Ej: 80"/></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="p2Amob"/><label for="p2Amob" style="font-size:13px">Amoblado</label></div>
+          <div class="fc"><label class="fl">Nombre de contacto</label><input class="fi" type="text" id="p2CtNom" placeholder="Tu nombre"/></div>
+          <div class="fc"><label class="fl">Teléfono de contacto</label><input class="fi" type="tel" id="p2CtTel" placeholder="Ej: +598 99 123 456"/></div>
+          <div class="fc"><label class="fl">Foto</label>
+            <img id="p2FotoPreview" class="prop-foto-preview"/>
+            <label class="prop-foto-label" for="p2FotoInput">📷 Elegir foto</label>
+            <input class="prop-foto-input" type="file" id="p2FotoInput" accept="image/*" onchange="previsualizarFoto('p2FotoInput','p2FotoPreview')"/>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-v" style="flex:1" onclick="guardarPublicacionProp()">Publicar</button>
+            <button class="btn btn-o" style="flex:1" onclick="toggleFormNuevaPub()">Cancelar</button>
+          </div>
+        </div>
+      </div>
       <div class="filtros">
         <button class="fb active" id="fTodos" onclick="filtrarProp('todos')">Todos</button>
         <button class="fb" id="fVenta" onclick="filtrarProp('venta')">Venta</button>
@@ -647,11 +675,13 @@ async function cargarPerfil(user){
   const verSalon=['administrador','propietario','inquilino'].includes(rol);
   const verGastos=['administrador','propietario'].includes(rol);
   const verProp=['administrador','propietario','visitante'].includes(rol);
+  const puedePublicar=['administrador','propietario'].includes(rol);
   document.getElementById('nSal').style.display=verSalon?'':'none';
   document.getElementById('nGast').style.display=verGastos?'':'none';
   document.getElementById('modSalon').style.display=verSalon?'':'none';
   document.getElementById('modGastos').style.display=verGastos?'':'none';
   document.getElementById('modProp').style.display=verProp?'':'none';
+  document.getElementById('wrapNuevaPub').style.display=puedePublicar?'':'none';
 }
 
 // ===== STATS HOME =====
@@ -855,7 +885,7 @@ function renderPublis(lista){
   const el=document.getElementById('listaPropiedades');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏘️</div><div class="empty-txt">Sin publicaciones activas</div></div>';return}
   const esAdmin=perfil?.rol==='administrador';
-  el.innerHTML=lista.map(p=>`<div class="card" id="pub-${p.id}"><div class="prop-img">${p.imagen_url?`<img src="${p.imagen_url}" alt="foto"/>`:p.tipo==='venta'?'🏢':'🏠'}</div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="prop-precio">${p.moneda} ${fMonto(p.precio)}</div><div class="prop-mon">${p.tipo==='alquiler'?'por mes':'precio de venta'}</div></div><span class="chip chip-${p.tipo}">${p.tipo}</span></div><div class="prop-desc">${p.descripcion||''}</div><div class="prop-tags">${p.ambientes?`<span class="prop-tag">🛏 ${p.ambientes} amb.</span>`:''}${p.superficie_m2?`<span class="prop-tag">📐 ${p.superficie_m2} m²</span>`:''}${p.amoblado?`<span class="prop-tag">🪑 Amoblado</span>`:''}${p.apartamentos?`<span class="prop-tag">Apto ${p.apartamentos.numero}</span>`:''}</div><div class="prop-ct"><div class="prop-dueno">👤 ${p.contacto_nombre||''}</div>${p.contacto_telefono?`<button class="btn-llamar" onclick="window.location='tel:${p.contacto_telefono}'">📞 Llamar</button>`:''}</div>${esAdmin?`<div class="com-acciones"><button class="com-btn com-btn-edit" data-id="${p.id}" onclick="mostrarEditPub(this)">✏️ Editar</button><button class="com-btn com-btn-del" onclick="eliminarPublicacion('${p.id}')">🗑️ Eliminar</button></div>`:''}</div>`).join('');
+  el.innerHTML=lista.map(p=>{const puedeEditar=esAdmin||(perfil?.rol==='propietario'&&p.user_id===usuario?.id);return`<div class="card" id="pub-${p.id}"><div class="prop-img">${p.imagen_url?`<img src="${p.imagen_url}" alt="foto"/>`:p.tipo==='venta'?'🏢':'🏠'}</div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="prop-precio">${p.moneda} ${fMonto(p.precio)}</div><div class="prop-mon">${p.tipo==='alquiler'?'por mes':'precio de venta'}</div></div><span class="chip chip-${p.tipo}">${p.tipo}</span></div><div class="prop-desc">${p.descripcion||''}</div><div class="prop-tags">${p.ambientes?`<span class="prop-tag">🛏 ${p.ambientes} amb.</span>`:''}${p.superficie_m2?`<span class="prop-tag">📐 ${p.superficie_m2} m²</span>`:''}${p.amoblado?`<span class="prop-tag">🪑 Amoblado</span>`:''}${p.apartamentos?`<span class="prop-tag">Apto ${p.apartamentos.numero}</span>`:''}</div><div class="prop-ct"><div class="prop-dueno">👤 ${p.contacto_nombre||''}</div>${p.contacto_telefono?`<button class="btn-llamar" onclick="window.location='tel:${p.contacto_telefono}'">📞 Llamar</button>`:''}</div>${puedeEditar?`<div class="com-acciones"><button class="com-btn com-btn-edit" data-id="${p.id}" onclick="mostrarEditPub(this)">✏️ Editar</button><button class="com-btn com-btn-del" onclick="eliminarPublicacion('${p.id}')">🗑️ Eliminar</button></div>`:''}</div>`}).join('');
 }
 function mostrarEditPub(btn){
   const id=btn.dataset.id;
@@ -1062,6 +1092,40 @@ async function guardarGasto(){
   cargado['gastos']=false;
 }
 
+// ===== PUBLICACIONES PROPIETARIO =====
+function toggleFormNuevaPub(){
+  const f=document.getElementById('formNuevaPub');
+  const visible=f.style.display!=='none';
+  f.style.display=visible?'none':'block';
+  if(!visible&&perfil?.rol==='propietario'){
+    const nom=perfil?.nombre||'';
+    if(nom)document.getElementById('p2CtNom').value=nom;
+  }
+}
+async function guardarPublicacionProp(){
+  const tipo=document.getElementById('p2Tipo').value;
+  const moneda=document.getElementById('p2Mon').value;
+  const precio=parseFloat(document.getElementById('p2Precio').value);
+  const descripcion=document.getElementById('p2Desc').value.trim();
+  const ambientes=parseInt(document.getElementById('p2Amb').value)||null;
+  const superficie_m2=parseFloat(document.getElementById('p2Sup').value)||null;
+  const amoblado=document.getElementById('p2Amob').checked;
+  const contacto_nombre=document.getElementById('p2CtNom').value.trim();
+  const contacto_telefono=document.getElementById('p2CtTel').value.trim();
+  if(!precio||precio<=0)return toast('Ingresá un precio válido','err');
+  if(!descripcion)return toast('Agregá una descripción','err');
+  toast('Subiendo...','ok');
+  const imagen_url=await subirFoto('p2FotoInput','p2-'+Date.now());
+  const{error}=await sb.from('publicaciones').insert({tipo,moneda,precio,descripcion,ambientes,superficie_m2,amoblado,contacto_nombre,contacto_telefono,imagen_url,apartamento_id:aptId||null,user_id:usuario.id,activa:true});
+  if(error)return toast('Error: '+error.message,'err');
+  toast('¡Publicación creada!','ok');
+  ['p2Precio','p2Desc','p2Amb','p2Sup','p2CtNom','p2CtTel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p2Amob').checked=false;
+  document.getElementById('p2FotoPreview').style.display='none';
+  document.getElementById('formNuevaPub').style.display='none';
+  recargarPublis();
+}
+
 // ===== FOTOS =====
 function previsualizarFoto(inputId, previewId){
   const file=document.getElementById(inputId)?.files[0];
@@ -1102,7 +1166,7 @@ async function guardarPublicacion(){
   if(!descripcion)return toast('Agregá una descripción','err');
   toast('Subiendo...','ok');
   const imagen_url=await subirFoto('pubFotoInput','pub-nueva');
-  const{error}=await sb.from('publicaciones').insert({tipo,moneda,precio,descripcion,ambientes,superficie_m2,amoblado,apartamento_id,contacto_nombre,contacto_telefono,imagen_url,activa:true});
+  const{error}=await sb.from('publicaciones').insert({tipo,moneda,precio,descripcion,ambientes,superficie_m2,amoblado,apartamento_id,contacto_nombre,contacto_telefono,imagen_url,user_id:usuario.id,activa:true});
   if(error)return toast('Error: '+error.message,'err');
   toast('¡Publicación creada!','ok');
   document.getElementById('pubPrecio').value='';
