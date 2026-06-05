@@ -1,6 +1,6 @@
 # Mburucuyá App — Estado del Proyecto
 
-**Fecha:** 30 de mayo de 2026  
+**Fecha:** 4 de junio de 2026  
 **App:** Gestión del edificio Mburucuyá, Torre A — Punta del Este  
 **URL pública:** https://mburucuya-app-ab053.web.app
 
@@ -67,6 +67,9 @@ mburucuya-app/
 | Push notifications web | ✅ Funciona | Vía Edge Function + webhook |
 | Push notifications iOS | ✅ Funciona | Celular bloqueado, app cerrada — llega igual |
 | Auto-actualización PWA | ✅ Funciona | SW versionado + version.json + postMessage |
+| Notif. reserva aprobada/rechazada | ✅ Funciona | Push al vecino + badge animado en nav Salón |
+| Keep-alive Supabase | ✅ Funciona | GitHub Action cada 3 días — evita pausa por inactividad |
+| Backup automático | ✅ Funciona | GitHub Action cada 3 días — JSON por tabla en rama `backups` |
 | Cambio de contraseña | ⏸ Pendiente | Por ahora se hace por SQL en Supabase |
 
 ---
@@ -131,6 +134,17 @@ npx supabase functions deploy notify-comunicado --no-verify-jwt
 2. Gustavo abre el panel admin → pestaña **Usuarios**
 3. Le asigna el rol (Propietario / Inquilino) y el apartamento
 4. Guardar
+
+---
+
+## GitHub Actions
+
+| Workflow | Frecuencia | Función |
+|---|---|---|
+| keepalive-backup | Cada 3 días | Ping a Supabase + backup JSON de todas las tablas |
+
+Backups guardados en rama `backups` del repo. Retiene los últimos 8 (aprox. 3 semanas).  
+Secret requerido: `SUPABASE_SERVICE_ROLE_KEY` (configurado en GitHub → Settings → Secrets).
 
 ---
 
