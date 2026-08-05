@@ -1235,6 +1235,8 @@ async function suscribirPush(){
     if(!reg?.pushManager||typeof Notification==='undefined'){toast('Push no disponible en este dispositivo','err');return;}
     const perm=Notification.permission==='granted'?'granted':await Notification.requestPermission();
     if(perm!=='granted'){toast('Permiso denegado','err');return;}
+    const existente=await reg.pushManager.getSubscription();
+    if(existente)await existente.unsubscribe();
     const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToUint8(VAPID_PUB)});
     const{error}=await sb.from('push_subscriptions').upsert({user_id:usuario.id,subscription:sub.toJSON(),endpoint:sub.endpoint},{onConflict:'endpoint'});
     if(error)toast('BD: '+error.message,'err');
