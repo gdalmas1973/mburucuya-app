@@ -129,6 +129,9 @@
     .com-btn{border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
     .com-btn-edit{background:#e8f5e9;color:var(--verde-med)}
     .com-btn-del{background:#ffebee;color:var(--rojo)}
+    .com-btn:not(.com-btn-edit):not(.com-btn-del){background:#eeeeee;color:var(--texto-suave)}
+    .com-vistos{margin-top:8px;padding:8px 10px;background:#f7f7f7;border-radius:8px}
+    .com-visto-item{font-size:12px;color:var(--texto-suave);padding:2px 0}
     .com-edit-form{margin-top:10px;display:flex;flex-direction:column;gap:8px}
     .com-edit-form .fi{width:100%}
     .com-edit-form .ft{width:100%;min-height:80px}
@@ -495,6 +498,7 @@
     <button class="adm-tab" onclick="tabAdmin(2,this)">💰 Gasto</button>
     <button class="adm-tab" onclick="tabAdmin(3,this)">👥 Usuarios</button>
     <button class="adm-tab" onclick="tabAdmin(4,this)">🏘️ Publicar</button>
+    <button class="adm-tab" onclick="tabAdmin(5,this)">🟢 En línea</button>
   </div>
   <div class="adm-body">
     <!-- TAB 0: NUEVA NOVEDAD -->
@@ -537,6 +541,10 @@
     <!-- TAB 3: USUARIOS -->
     <div class="adm-panel" id="aTab3">
       <div id="listaUsuarios"><div class="loading">Cargando</div></div>
+    </div>
+    <!-- TAB 5: PRESENCIA EN LÍNEA -->
+    <div class="adm-panel" id="aTab5">
+      <div id="listaPresencia"></div>
     </div>
     <!-- TAB 2: CARGAR GASTO -->
     <div class="adm-panel" id="aTab2">
@@ -707,7 +715,23 @@ async function cargarComunicados(){
   const el=document.getElementById('listaComunicados');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-ico">📢</div><div class="empty-txt">Sin novedades por ahora</div></div>';return}
   const esAdmin=perfil?.rol==='administrador';
-  el.innerHTML=data.map(c=>`
+  let vistosPorCom={};
+  if(esAdmin){
+    const{data:vistos}=await sb.from('comunicado_vistos')
+      .select('comunicado_id,visto_at,perfiles(nombre,apartamentos(numero))')
+      .in('comunicado_id',data.map(c=>c.id));
+    (vistos||[]).forEach(v=>{
+      (vistosPorCom[v.comunicado_id]=vistosPorCom[v.comunicado_id]||[]).push(v);
+    });
+  }else if(data.length){
+    sb.from('comunicado_vistos').upsert(
+      data.map(c=>({comunicado_id:c.id,user_id:usuario.id})),
+      {onConflict:'comunicado_id,user_id',ignoreDuplicates:true}
+    );
+  }
+  el.innerHTML=data.map(c=>{
+    const vistos=vistosPorCom[c.id]||[];
+    return `
     <div class="com-item" id="com-${c.id}">
       <span class="chip chip-${c.tipo}">${c.tipo}</span>
       <div class="com-titulo">${c.titulo}</div>
@@ -716,8 +740,17 @@ async function cargarComunicados(){
       ${esAdmin?`<div class="com-acciones">
         <button class="com-btn com-btn-edit" data-id="${c.id}" data-tipo="${c.tipo}" data-titulo="${(c.titulo||'').replace(/"/g,'&quot;')}" data-contenido="${(c.contenido||'').replace(/"/g,'&quot;')}" onclick="mostrarEditCom(this)">✏️ Editar</button>
         <button class="com-btn com-btn-del" onclick="eliminarComunicado('${c.id}')">🗑️ Eliminar</button>
+        <button class="com-btn" onclick="toggleVistos('${c.id}')">👁️ ${vistos.length} vieron</button>
+      </div>
+      <div class="com-vistos" id="vistos-${c.id}" style="display:none">
+        ${vistos.length?vistos.map(v=>`<div class="com-visto-item">${v.perfiles?.apartamentos?.numero?`Depto ${v.perfiles.apartamentos.numero} — `:''}${v.perfiles?.nombre||'Sin nombre'}</div>`).join(''):'<div class="com-visto-item">Todavía nadie lo vio</div>'}
       </div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+function toggleVistos(id){
+  const el=document.getElementById('vistos-'+id);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 function mostrarEditCom(btn){
   const id=btn.dataset.id, tipo=btn.dataset.tipo, titulo=btn.dataset.titulo, contenido=btn.dataset.contenido;
@@ -1014,6 +1047,7 @@ function tabAdmin(i,btn){
   if(i===1)cargarResPend();
   if(i===3)cargarUsuarios();
   if(i===4)cargarAptosPublicacion();
+  if(i===5)renderPresencia();
 }
 async function publicarNovedad(){
   const tipo=document.getElementById('novTipo').value;
@@ -1297,6 +1331,42 @@ function desuscribirRealtime(){
   ultimoComTs=0;
 }
 
+// ===== PRESENCIA EN LÍNEA =====
+let presenceChannel=null;
+function unirsePresencia(){
+  if(presenceChannel||!usuario)return;
+  presenceChannel=sb.channel('presencia-edificio',{config:{presence:{key:usuario.id}}});
+  presenceChannel.on('presence',{event:'sync'},()=>{
+    if(document.getElementById('aTab5')?.classList.contains('active'))renderPresencia();
+  });
+  presenceChannel.subscribe(async(status)=>{
+    if(status==='SUBSCRIBED'){
+      await presenceChannel.track({
+        nombre: perfil?.nombre||usuario.email,
+        apto: perfil?.apartamentos?.numero||null,
+        rol: perfil?.rol||'',
+        desde: Date.now()
+      });
+    }
+  });
+}
+function salirPresencia(){
+  if(presenceChannel){sb.removeChannel(presenceChannel);presenceChannel=null;}
+}
+function renderPresencia(){
+  const el=document.getElementById('listaPresencia');
+  if(!el)return;
+  const state=presenceChannel?.presenceState()||{};
+  const conectados=Object.values(state).map(entradas=>entradas[0]).filter(Boolean)
+    .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  if(!conectados.length){el.innerHTML='<div class="empty"><div class="empty-ico">🟢</div><div class="empty-txt">Nadie conectado en este momento</div></div>';return}
+  el.innerHTML=conectados.map(p=>`
+    <div class="adm-usr-item">
+      <div class="adm-usr-nom">🟢 ${p.nombre||'Sin nombre'}</div>
+      <div class="adm-usr-email">${p.apto?`Apto ${p.apto} · `:''}${p.rol||''}</div>
+    </div>`).join('');
+}
+
 // ===== INIT =====
 let _iniciando=false;
 async function iniciarApp(user){
@@ -1308,6 +1378,7 @@ async function iniciarApp(user){
     await cargarPerfil(user);
     cargarStats();
     suscribirRealtime();
+    unirsePresencia();
   }catch(e){
     mostrarLogin();
   }finally{_iniciando=false;}
@@ -1315,6 +1386,7 @@ async function iniciarApp(user){
 function mostrarLogin(){
   usuario=null;perfil=null;aptId=null;
   desuscribirRealtime();
+  salirPresencia();
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('mainApp').style.display='none';
   document.getElementById('adminFab').classList.remove('on');
